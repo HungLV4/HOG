@@ -41,7 +41,7 @@ class CoHOGDetector(object):
 				magnitude = np.sqrt(gy[y, x] ** 2 + gx[y, x] ** 2)
 				self.im_gradient[y, x, angle] += magnitude
 
-	def _calc_cell_CoHOG(self, cell, offsets):
+	def _calc_cell_CoHOG(self, offsets):
 		"""
 		Calculate CoHOG features for a given cell from integral gradient image
 		returns:
@@ -62,14 +62,10 @@ class CoHOGDetector(object):
 					if neigh_y < 0 or neigh_y > self.heigh - 1 or neigh_x < 0 or neigh_x > self.width - 1:
 						continue
 					
+					# find co-occurence orientation
 					for i, j in itertools.product(range(self.numorient), range(self.numorient)):
 						features[i, j] += self.im_gradient[y, x, i] + self.im_gradient[neigh_y, neigh_x, j]
-
-		for ang in xrange(self.numorient):
-	        hog_features[ang] = self.cohog[cell[ 1 ], cell[ 0 ], ang] + self.cohog[cell[3], cell[2], ang] \
-	        						- self.cohog[cell[1], cell[2], ang] - self.cohog[cell[3], cell[0], ang]
-	 
-	    return hog_features
+	    return features
 
 	def compute(self, cell_size):
 		pass
