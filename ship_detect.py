@@ -133,4 +133,4 @@ if __name__ == '__main__':
 		trainHOG()
 
 	# detect()
-	detectScene("VNR20150904_PAN.png")
+	detectScene("VNR20150816_PAN.png")
