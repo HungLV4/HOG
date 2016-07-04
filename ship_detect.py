@@ -60,7 +60,7 @@ def detect():
 
 		print filepath, nbr[0] == 1
 
-def detectScene(filename, winStride = (4, 4)):
+def customDetectMultiscale(filename, winStride = (4, 4)):
 	# read image
 	filepath = "test/ship/multi_scale/" + filename
 	image = cv2.imread(filepath, 0)
@@ -105,6 +105,7 @@ def detectMultiscale(filename):
 
 	# new primal support vectors
 	primal_svs = np.zeros((var_count, 1))
+
 	for r in range(sv_count):
 		alpha = alphas[0][r]
 		v = clf.support_vectors_[r]
@@ -133,4 +134,5 @@ if __name__ == '__main__':
 		trainHOG()
 
 	# detect()
-	detectScene("VNR20150816_PAN.png")
+	customDetectMultiscale("0000092.png")
+	# detectMultiscale("0000093.png")
