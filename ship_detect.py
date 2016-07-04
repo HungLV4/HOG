@@ -3,6 +3,7 @@ from sklearn.externals import joblib
 from sklearn import datasets
 from skimage.feature import hog
 from sklearn.svm import LinearSVC
+from sklearn.svm import SVC
 
 import csv
 import math
@@ -29,105 +30,107 @@ def getAllFilesInDirectory(dir):
 	return glob.glob(dir)
 
 def trainHOG():
-	trainPositiveFiles = getAllFilesInDirectory("train/ship/pos/*.png")
-	trainNegativeFiles = getAllFilesInDirectory("train/ship/neg/*.png")
+	trainPositiveFiles = getAllFilesInDirectory("train/ship/pos/64x128/*.png")
+	trainNegativeFiles = getAllFilesInDirectory("train/ship/neg/64x128/*.png")
 
-	labels = np.array([0 for i in range(len(trainNegativeFiles))] + \
+	labels = np.array([-1 for i in range(len(trainNegativeFiles))] + \
 						[1 for i in range(len(trainPositiveFiles))])
 
 	list_hog_fd = []
 	for filepath in (trainNegativeFiles + trainPositiveFiles):
 		im = cv2.imread(filepath, 0)
-		fd = hog(im, orientations=9, pixels_per_cell=(14, 14), cells_per_block=(1, 1), visualise=False)
+		fd = hog(im, orientations=9, pixels_per_cell=(8, 8), cells_per_block=(2, 2), visualise=False)
+
 		list_hog_fd.append(fd)
 	hog_features = np.array(list_hog_fd, 'float64')
 
-	clf = LinearSVC()
+	clf = SVC(kernel = 'linear')
 	clf.fit(hog_features, labels)
 	joblib.dump(clf, HOG_CLF_FILE, compress=3)
 
-def findShipsInImage():
-	# list of test images
-	test_images = []
-	for filename in test_images:
-		filepath = FILEPATH_PREFIX + filename + ".tif"
-		vispath = FILEPATH_PREFIX + filename + ".png"
-		
-		print filepath
-		if os.path.isfile(filepath) and os.path.isfile(vispath):
-			# read color visualizable image
-			vis = cv2.imread(vispath)
-			greyscale = cv2.imread(vispath, 0)
+def detect():
+	# load classifier
+	clf = joblib.load(HOG_CLF_FILE)
+	
+	testFiles = getAllFilesInDirectory("test/ship/64x128/*.png")
+	for filepath in testFiles:
+		im = cv2.imread(filepath, 0)
+		hog_fd = hog(im, orientations=9, pixels_per_cell=(8, 8), cells_per_block=(2, 2), visualise=False)
+		nbr = clf.predict(np.array([hog_fd], 'float64'))
 
-			# read pan image
-			dataset = gdal.Open(filepath, GA_ReadOnly)
-			cols = dataset.RasterXSize
-			rows = dataset.RasterYSize
-			num_bands = dataset.RasterCount
-			
-			band = dataset.GetRasterBand(1)
+		print filepath, nbr[0] == 1
 
-			# calculate rxd image
-			print "Calculating RXD"
-			rxd = calculateRXD(band, rows, cols)
+def detectScene(filename, winStride = (4, 4)):
+	# read image
+	filepath = "test/ship/multi_scale/" + filename
+	image = cv2.imread(filepath, 0)
 
-			# threshold the image
-			print "Thresholding image"
-			anomaly = thresholdAnomaly(rxd, rows, cols)
-
-			# finding ROI positions
-			print "Finding potential candidates"
-
-			pan = band.ReadAsArray().astype(np.int)
-
-			# noise removal
-			kernel = np.ones((5, 5), np.uint8)
-			opening = cv2.morphologyEx(anomaly, cv2.MORPH_OPEN, kernel, iterations = 2)
-
-			# connected compponents
-			kernel = np.ones((5, 5), np.uint8)
-			im_th = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel, iterations = 2)
-
-			ctrs, hier = cv2.findContours(im_th.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-			rects = [cv2.boundingRect(ctr) for ctr in ctrs]
-			
-			for rect in rects:
-				leng = int(rect[3] * 1.6)
-				pt1 = int(rect[1] + rect[3] // 2 - leng // 2)
-				pt1 = pt1 if pt1 > 0 else 0
-
-				pt2 = int(rect[0] + rect[2] // 2 - leng // 2)
-				pt2 = pt2 if pt2 > 0 else 0
-
-				roi = greyscale[pt1 : pt1 + leng if pt1 + leng < rows - 1 else rows - 1, \
-							pt2 : pt2 + leng if pt2 + leng < cols - 1 else cols - 1]
-				
-				roi = cv2.resize(roi, (28, 28))
-				roi = cv2.dilate(roi, (3, 3))
-
-				fd = hog(roi, orientations=9, pixels_per_cell=(14, 14), cells_per_block=(1, 1), visualise=False)
-
-				# draw contour
-
-				# save the vis
-				cv2.imwrite("results/" + filename + ".png", vis)
-		else:
-			print "File Not Found"
-
-def test():
 	# load classifier
 	clf = joblib.load(HOG_CLF_FILE)
 
-	testFiles = getAllFilesInDirectory("test/ship/*.png")
-	for filepath in testFiles:
-		im = cv2.imread(filepath, 0)
-		hog_fd = hog(im, orientations=9, pixels_per_cell=(14, 14), cells_per_block=(1, 1), visualise=False)
-		nbr = clf.predict(np.array([hog_fd], 'float64'))
+	height, width = image.shape
 
-		print filepath, nbr[0]
+	# detect ships in image
+	positions = []
+	for i in xrange(0, height - 128 - winStride[0], winStride[0]):
+		print float(i) / height * 100
+		for j in xrange(0, width - 64 - winStride[0], winStride[1]):
+			hog_fd = hog(image[i : i + 128, j : j + 64], orientations=9, pixels_per_cell=(8, 8), cells_per_block=(2, 2), visualise=False)
+			nbr = clf.predict(np.array([hog_fd], 'float64'))
+			if nbr[0] == 1:
+				positions.append((j, i))
+	
+	# apply non-maxima suppression to the bounding boxes using a
+	# fairly large overlap threshold to try to maintain overlapping
+	# boxes that are still people
+	rects = np.array([[j, i, j + 64, i + 128] for (j, i) in positions])
+	pick = non_max_suppression(rects, probs=None, overlapThresh=0.5)
+
+	# draw the final bounding boxes
+	for (xA, yA, xB, yB) in pick:
+		cv2.rectangle(image, (xA, yA), (xB, yB), (0, 255, 0), 1)
+
+	cv2.imwrite("results/ship/multi_scale/" + filename, image)
+
+def detectMultiscale(filename):
+	# load classifier
+	clf = joblib.load(HOG_CLF_FILE)
+
+	# convert to primal form
+	sv_count = clf.support_vectors_.shape[0] # number of support vector
+	var_count = clf.support_vectors_.shape[1] # number of features
+
+	# get the alphas
+	alphas = np.abs(clf.dual_coef_)
+
+	# new primal support vectors
+	primal_svs = np.zeros((var_count, 1))
+	for r in range(sv_count):
+		alpha = alphas[0][r]
+		v = clf.support_vectors_[r]
+		for j in range(var_count):
+			primal_svs[j] += (-alpha) * v[j]
+
+	# set up multi-scale detector
+	hog = cv2.HOGDescriptor()
+	hog.setSVMDetector(primal_svs)
+
+	# read image
+	filepath = "test/ship/multi_scale/" + filename
+	image = cv2.imread(filepath, 0)
+
+	# find ships position
+	(rects, weights) = hog.detectMultiScale(image, winStride=(4, 4), padding=(8, 8), scale=1.05)
+
+	# draw the original bounding boxes
+	for (x, y, w, h) in rects:
+		cv2.rectangle(image, (x, y), (x + w, y + h), (0, 0, 255), 2)
+	
+	cv2.imwrite("results/ship/multi_scale/" + filename, image)
 
 if __name__ == '__main__':
-	# if not os.path.isfile(HOG_CLF_FILE):
-	# 	trainHOG()
+	if not os.path.isfile(HOG_CLF_FILE):
+		trainHOG()
 
-	# test()
+	# detect()
+	detectScene("VNR20150904_PAN.png")

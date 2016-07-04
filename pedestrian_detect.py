@@ -7,6 +7,11 @@ import cv2
 import sys
 
 if __name__ == '__main__':
+	print type(cv2.HOGDescriptor_getDefaultPeopleDetector())
+	print cv2.HOGDescriptor_getDefaultPeopleDetector().shape
+	print cv2.HOGDescriptor_getDefaultPeopleDetector()
+	exit()
+
 	imagePath = "{0}.jpg".format(sys.argv[1])
 
 	# initialize the HOG descriptor/person detector
