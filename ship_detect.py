@@ -97,5 +97,4 @@ if __name__ == '__main__':
 		trainHOG()
 
 	# detect()
-	customDetectMultiscale("0000092.png")
 	# detectMultiscale("0000093.png")
