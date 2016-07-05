@@ -4,10 +4,11 @@ import itertools
 
 class CoHOGDetector(object):
 	"""docstring for CoHOGDetector"""
-	def __init__(self, im, numorient = 9):
+	def __init__(self, im, numorient = 9, magnitude_threshold = 0.0):
 		super(CoHOGDetector, self).__init__()
 		self.im = im
 		self.numorient = numorient
+		self.magnitude_threshold = magnitude_threshold
 	
 	def _init(self):
 		self.width, self.heigh, depth = self.im.shape
@@ -37,9 +38,13 @@ class CoHOGDetector(object):
 		mid = self.numorient / 2
 		for y in range(heigh - 1):
 			for x in range(width - 1):
-				angle = int( round(mid * np.arctan2(gy[y, x], gx[y, x]) / np.pi)) + mid
 				magnitude = np.sqrt(gy[y, x] ** 2 + gx[y, x] ** 2)
-				self.im_gradient[y, x, angle] += magnitude
+				orientation = 0
+				if magnitude >= self.magnitude_threshold:
+					angle = np.arctan2(gy[y, x], gx[y, x])
+					orientation = math.floor(1 + angle / (np.pi / mid))					
+				
+				self.im_gradient[y, x, orientation] += magnitude
 
 	def _calc_cell_CoHOG(self, offsets):
 		"""
