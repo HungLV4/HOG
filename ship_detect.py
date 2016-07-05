@@ -60,7 +60,7 @@ def detect():
 
 		print filepath, nbr[0] == 1
 
-def customDetectMultiscale(filename, winStride = (4, 4)):
+def detectMultiscale(filename, winStride = (4, 4)):
 	# read image
 	filepath = "test/ship/multi_scale/" + filename
 	image = cv2.imread(filepath, 0)
