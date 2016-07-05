@@ -92,43 +92,6 @@ def customDetectMultiscale(filename, winStride = (4, 4)):
 
 	cv2.imwrite("results/ship/multi_scale/" + filename, image)
 
-def detectMultiscale(filename):
-	# load classifier
-	clf = joblib.load(HOG_CLF_FILE)
-
-	# convert to primal form
-	sv_count = clf.support_vectors_.shape[0] # number of support vector
-	var_count = clf.support_vectors_.shape[1] # number of features
-
-	# get the alphas
-	alphas = np.abs(clf.dual_coef_)
-
-	# new primal support vectors
-	primal_svs = np.zeros((var_count, 1))
-
-	for r in range(sv_count):
-		alpha = alphas[0][r]
-		v = clf.support_vectors_[r]
-		for j in range(var_count):
-			primal_svs[j] += (-alpha) * v[j]
-
-	# set up multi-scale detector
-	hog = cv2.HOGDescriptor()
-	hog.setSVMDetector(primal_svs)
-
-	# read image
-	filepath = "test/ship/multi_scale/" + filename
-	image = cv2.imread(filepath, 0)
-
-	# find ships position
-	(rects, weights) = hog.detectMultiScale(image, winStride=(4, 4), padding=(8, 8), scale=1.05)
-
-	# draw the original bounding boxes
-	for (x, y, w, h) in rects:
-		cv2.rectangle(image, (x, y), (x + w, y + h), (0, 0, 255), 2)
-	
-	cv2.imwrite("results/ship/multi_scale/" + filename, image)
-
 if __name__ == '__main__':
 	if not os.path.isfile(HOG_CLF_FILE):
 		trainHOG()
