@@ -32,9 +32,9 @@ class HOGDetector(object):
 		self.integral_gradient = np.zeros((self.heigh, self.width, self.numorient))
 
 		# calc initial gradient orientation and magnnitude
-		mid = numorient / 2
-		for y in range(heigh - 1):
-			for x in range(width - 1):
+		mid = self.numorient / 2
+		for y in range(self.heigh):
+			for x in range(self.width):
 				# normalize the gradient vector
 				magnitude_norm = np.sqrt((gy[y, x] ** 2 + gx[y, x] ** 2) / magnitude[y, x] ** 2)
 				orientation = 0
@@ -76,9 +76,7 @@ class HOGDetector(object):
 		self.magnitude_threshold = magnitude_threshold
 
 		# preparing image
-		self.width, self.heigh, depth = self.im.shape
-		if depth == 3:
-			self.im = cv2.cvtColor(self.im, cv2.COLOR_BGR2GRAY)
+		self.heigh, self.width = self.im.shape
 
 		# calculate weighted gradient
 		self._calc_weighted_gradient()

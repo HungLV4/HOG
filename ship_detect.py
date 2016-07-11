@@ -1,7 +1,7 @@
 
 from sklearn.externals import joblib
 from sklearn import datasets
-from skimage.feature import hog
+from skimage.feature import ho
 from sklearn.svm import LinearSVC
 from sklearn.svm import SVC
 
