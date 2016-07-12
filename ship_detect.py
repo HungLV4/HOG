@@ -1,7 +1,7 @@
 
 from sklearn.externals import joblib
 from sklearn import datasets
-from skimage.feature import ho
+from skimage.feature import hog
 from sklearn.svm import LinearSVC
 from sklearn.svm import SVC
 
@@ -58,8 +58,6 @@ def detect():
 		hog_fd = hog(im, orientations=9, pixels_per_cell=(8, 8), cells_per_block=(2, 2), visualise=False)
 		nbr = clf.predict(np.array([hog_fd], 'float64'))
 
-		print filepath, nbr[0] == 1
-
 def detectMultiscale(filename, winStride = (4, 4)):
 	# read image
 	filepath = "test/ship/multi_scale/" + filename
@@ -96,5 +94,5 @@ if __name__ == '__main__':
 	if not os.path.isfile(HOG_CLF_FILE):
 		trainHOG()
 
-	# detect()
+	detect()
 	# detectMultiscale("0000093.png")
