@@ -53,15 +53,6 @@ class HOGDetector(object):
 														gradient[y, x - 1, ang] - \
 														gradient[y - 1, x - 1, ang]
 
-	
-	def _calc_hog_descriptor(self):
-		for y in xrange(0, pixels_per_cell[0], self.heigh):
-			for x in xrange(0, pixels_per_cell[1], self.width):
-				fd = self._calc_cell_HOG(cell)
-
-	def _block_normalization(self, gradient, pixels_per_cell = (8, 8), cells_per_block=(2, 2)):
-		return gradient
-
 	def _calc_cell_HOG(self, cell):
 		"""
 		Calculate HOG features for a given cell from integral gradient image
@@ -72,11 +63,33 @@ class HOGDetector(object):
 		"""	
 		features = np.zeros(self.numorient)
 		for ang in range(self.numorient):
-			features[ang] = self.integral_gradient[cell[1], cell[0], ang] + \
-							self.integral_gradient[cell[3], cell[2], ang] - \
-							self.integral_gradient[cell[1], cell[2], ang] - \
-							self.integral_gradient[cell[3], cell[0], ang]
+			features[ang] = self.integral_gradient[cell[0], cell[1], ang] + \
+							self.integral_gradient[cell[2], cell[3], ang] - \
+							self.integral_gradient[cell[2], cell[1], ang] - \
+							self.integral_gradient[cell[0], cell[3], ang]
 		return features
+
+	def _calc_descriptor(self):
+		# calculate cell descriptor
+		h, w = self.heigh / self.pixels_per_cell[0], self.width / self.pixels_per_cell[1]
+		
+		descriptor = []
+
+		# calculate block descriptor
+		overlap = 0.5
+		stepY = overlap * cells_per_block[0]
+		stepX = overlap * cells_per_block[1]
+
+		for y in xrange(0, h - cells_per_block[0], stepY):
+			for x in xrange(0, w - cells_per_block[1], stepX):
+				# L1-norm block normalization
+				fd = []
+
+				# calculate hog vector for each cell in block
+				for i in range(cells_per_block[0]):
+					for j in range(cells_per_block[1]):
+						self._calc_cell_HOG((i, j, i + 1, j + 1))
+
 
 	def compute(self, im, numorient = 9, pixels_per_cell = (8, 8), cells_per_block=(2, 2), magnitude_threshold = 0.0):
 		# initialize parameters
@@ -91,11 +104,3 @@ class HOGDetector(object):
 
 		# calculate weighted gradient
 		self._calc_weighted_gradient()
-
-		# calculate features
-		for i in range(self.heigh):
-			for j in range(self.width):
-				# self._calc_cell_HOG((i, j, i + pixels_per_cell[0], j + pixels_per_cell[1]))
-				pass
-
-		self._block_normalization()
