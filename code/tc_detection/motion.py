@@ -4,7 +4,7 @@ import numpy as np
 import math
 
 def getFilePathFromTime(yyyy, mm, dd, hh, mn):
-	return "../../data/tc/images/rainbow/{:0>4d}{:0>2d}{:0>2d}{:0>2d}{:0>2d}.tir.01.fld.tiff".format(yyyy, mm, dd, hh, mn)
+	return "../../data/tc/images/rainbow/{:0>4d}{:0>2d}{:0>2d}{:0>2d}{:0>2d}.tir.02.fld.tiff".format(yyyy, mm, dd, hh, mn)
 
 def calcWindAtTime(yyyy, mm, dd, hh, mn):
 	# read image at best-track time
@@ -15,30 +15,38 @@ def calcWindAtTime(yyyy, mm, dd, hh, mn):
 	
 	# read image at 10-minutes later
 	ref_im_path = getFilePathFromTime(yyyy, mm, dd, hh, mn + 10)
-	ref_im = cv2.imread(impath, -1)
+	ref_im = cv2.imread(ref_im_path, -1)
 
 	ref_im = cv2.cvtColor(ref_im, cv2.COLOR_BGR2GRAY)
 
 	height, width = im.shape
 
-	# calculate dense optical flow
-	# flow = cv2.calcOpticalFlowFarneback(im, ref_im, 0.5, 3, 15, 3, 5, 1.2, cv2.OPTFLOW_FARNEBACK_GAUSSIAN)
-
 	# calculate motion using block matching
-	blockSize  = (4, 4)
-	shiftSize = (1, 1)
+	blockSize = (16, 16)
+	shiftSize = (10, 10)
 	maxRange = (10, 10)
-	velX = np.zeros((height, width), dtype=np.float32)
-	velY = np.zeros((height, width), dtype=np.float32)
 
-	cv2.cv.CalcOpticalFlowBM(cv2.cv.fromarray(im), cv2.cv.fromarray(ref_im), blockSize, shiftSize, maxRange, 0, cv2.cv.fromarray(velX), cv2.cv.fromarray(velY))
+	velSize = ((width - blockSize[1] + shiftSize[1]) / shiftSize[1], (height - blockSize[0] + shiftSize[0]) / shiftSize[0])
 
-	# for i in xrange(0, height, 20):
-	# 	for j in xrange(0, width, 20):
-	# 		motion = flow[i, j]
-	# 		cv2.line(im, (i, j), (i + 10 * int(math.ceil(motion[0])), j + 10 * int(math.ceil(motion[1]))), (0, 0, 0), 2, cv2.CV_AA)
+	velX = cv2.cv.fromarray(np.zeros(velSize, dtype=np.float32))
+	velY = cv2.cv.fromarray(np.zeros(velSize, dtype=np.float32))
 
-	# cv2.imwrite("motion.png", im)
+	print "Calculating wind vector ..."
+	cv2.cv.CalcOpticalFlowBM(cv2.cv.fromarray(im), cv2.cv.fromarray(ref_im), blockSize, shiftSize, maxRange, 0, velX, velY)
+
+	print "Visualizing ..."
+	for i in range(0, velSize[0]):
+		for j in range(0, velSize[1]):
+			motionX = int(math.ceil(velX[i, j]))
+			motionY = int(math.ceil(velY[i, j]))
+
+			anchorX = i * shiftSize[0] + (shiftSize[0] / 2)
+			anchorY = j * shiftSize[1] + (shiftSize[1] / 2)
+
+			if motionX > 0 or motionY > 0:
+				cv2.line(im, (anchorX, anchorY), (anchorX + motionX, anchorY + motionY), (0, 0, 0), 1, cv2.CV_AA)
+
+	cv2.imwrite("motion.png", im)
 
 def processByBestTrack(bestTrackFile):
 	with open(bestTrackFile, 'rb') as btfile:
