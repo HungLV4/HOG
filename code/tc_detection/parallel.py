@@ -24,4 +24,5 @@ if __name__ == '__main__':
 
 	with Parallel(n_jobs=num_cores) as parallel:
 		cost = parallel(delayed(absDiff)(mb1, mb2) for k in range(10))
-		print cost
+	
+	print cost

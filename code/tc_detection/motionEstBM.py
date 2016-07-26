@@ -1,6 +1,7 @@
 import numpy as np
 from joblib import Parallel, delayed
 import multiprocessing
+import operator
 
 """ Computes the Mean Absolute Difference (MAD)
 """
@@ -55,9 +56,10 @@ def motionEstTSS(curI, nextI, blockSize, stepSize, shiftSize):
 				# calculate cost at same position and initiate as minCost
 				refMb = nextI[newOrigX - blockSize : newOrigX + blockSize, 
 							newOrigY - blockSize: newOrigY + blockSize]
-				
 				minCost = evalMAD(origMb, refMb)
 
+				listRef = []
+				listXY = []
 				for x in xrange(-1,2,1):
 					for y in xrange(-1,2,1):
 						if x == 0 and y == 0:
@@ -72,13 +74,17 @@ def motionEstTSS(curI, nextI, blockSize, stepSize, shiftSize):
 						# get the ref block
 						refMb = nextI[refX - blockSize: refX + blockSize, refY - blockSize: refY + blockSize]
 						
-						# calculate cost at new position
-						cost = evalMAD(origMb, refMb)
-												
-						if cost < minCost:
-							minCost = cost
-							newOrigX = refX
-							newOrigY = refY
+						# add to listRef for later calculate cost
+						listRef.append(refMb)
+						listXY.append((refX, refY))
+				
+				with Parallel(n_jobs=num_cores) as parallel:
+					cost = parallel(delayed(evalMAD)(origMb, mb) for mb in listRef)
+
+				min_index, min_cost = min(enumerate(cost), key=operator.itemgetter(1))
+				if min_cost < minCost:
+					newOrigX = (listXY[min_index])[0]
+					newOrigY = (listXY[min_index])[0]
 				
 				_stepSize = _stepSize / 2
 			
