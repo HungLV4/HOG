@@ -1,5 +1,9 @@
 import numpy as np
+from joblib import Parallel, delayed
+import multiprocessing
 
+""" Computes the Mean Absolute Difference (MAD)
+"""
 def evalMAD(mb1, mb2):
 	height, width = mb1.shape
 	cost = 0.0
@@ -7,21 +11,27 @@ def evalMAD(mb1, mb2):
 		for j in range(width):
 			cost += abs(int(mb1[i, j]) - int(mb2[i, j]))
 	return cost / (height * width)
-
-# Computes motion vectors using 3-step search method
-# Input
-#   cur : The image for which we want to find motion vectors
-#   next : The reference image
-# 	blockSize:
-# 	stepSize:
-# 	shiftSize:
-# Ouput
-#    motionVect : the motion vectors for each integral macroblock in imgP
-def motionEst3SS(curI, nextI, blockSize, stepSize, shiftSize):
+	
+""" Computes motion vectors using 3-step search method
+Input:
+	curI: The image for which we want to find motion vectors
+	nextI: The reference image
+	blockSize:
+ 	stepSize:
+	shiftSize:
+Ouput:
+    velX, velY : the motion vectors for each direction
+"""
+def motionEstTSS(curI, nextI, blockSize, stepSize, shiftSize):
+	# check if two images have the same size
 	if nextI.shape != curI.shape:
-		return []
+		print "Two images do not have the same size"
+		return [], []
 	
 	height, width = curI.shape
+
+	# get the number of system cores
+	num_cores = multiprocessing.cpu_count()
 
 	# initialize motion vector
 	velSize = ((height - blockSize + shiftSize) / shiftSize, (width - blockSize + shiftSize) / shiftSize)
@@ -36,34 +46,67 @@ def motionEst3SS(curI, nextI, blockSize, stepSize, shiftSize):
 			# original block
 			newOrigX = i * shiftSize
 			newOrigY = j * shiftSize
+			
 			origMb = curI[newOrigX - blockSize : newOrigX + blockSize, 
 						newOrigY - blockSize: newOrigY + blockSize]
 			
-			while stepSize >= 1:
-				minCost = -1.0				
+			_stepSize = stepSize
+			while _stepSize >= 1:
+				# calculate cost at same position and initiate as minCost
+				refMb = nextI[newOrigX - blockSize : newOrigX + blockSize, 
+							newOrigY - blockSize: newOrigY + blockSize]
+				
+				minCost = evalMAD(origMb, refMb)
+
 				for x in xrange(-1,2,1):
 					for y in xrange(-1,2,1):
-						# calculate cost at new position
-						refX = x * stepSize + newOrigX
-						refY = y * stepSize + newOrigY
+						if x == 0 and y == 0:
+							continue
+
+						# calculate ref position
+						refX = x * _stepSize + newOrigX
+						refY = y * _stepSize + newOrigY
 						if refX < blockSize or refY < blockSize or refX + blockSize >= height or refY + blockSize >= width:
 							continue
 						
+						# get the ref block
 						refMb = nextI[refX - blockSize: refX + blockSize, refY - blockSize: refY + blockSize]
-						cost = evalMAD(origMb, refMb)
 						
-						if minCost == -1.0:
+						# calculate cost at new position
+						cost = evalMAD(origMb, refMb)
+												
+						if cost < minCost:
 							minCost = cost
 							newOrigX = refX
 							newOrigY = refY
-						else:
-							if cost < minCost:
-								minCost = cost
-								newOrigX = refX
-								newOrigY = refY
 				
-				stepSize = stepSize / 2
-			velX[i, j] = newOrigX
-			velY[i, j] = newOrigY
+				_stepSize = _stepSize / 2
+			
+			velX[i, j] = newOrigX - i * shiftSize
+			velY[i, j] = newOrigY - j * shiftSize
+
+	return velX, velY
+
+""" Computes motion vectors using 3-step search method
+Input:
+	curI: The image for which we want to find motion vectors
+	nextI: The reference image
+	blockSize:
+	stepSize:
+Ouput:
+    velX, velY : the motion vectors for each direction
+"""
+def motionEstARPS(curI, nextI, blockSize, stepSize):
+	# check if two images have the same size
+	if nextI.shape != curI.shape:
+		print "Two images do not have the same size"
+		return [], []
+	
+	height, width = curI.shape
+
+	# initialize motion vector
+	velSize = ((height - blockSize + shiftSize) / shiftSize, (width - blockSize + shiftSize) / shiftSize)
+	velX = np.zeros(velSize, dtype=np.int32)
+	velY = np.zeros(velSize, dtype=np.int32)
 
 	return velX, velY
