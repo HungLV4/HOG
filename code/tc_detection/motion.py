@@ -69,8 +69,8 @@ def processByBestTrack(bestTrackFile):
 
 def test():
 	yyyy = 2015
-	mm = 7
-	dd = 7
+	mm = 8
+	dd = 8
 	hh = 0
 	mn = 0
 
