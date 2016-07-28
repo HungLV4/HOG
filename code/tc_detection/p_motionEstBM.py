@@ -115,6 +115,11 @@ def motionEstTSS(curI, nextI, blockSize, stepSize, shiftSize):
 	# Fork the worker processes to perform motion vector computation concurrently
 	Parallel(n_jobs=num_cores)(delayed(estTSS)(curI, nextI, velX, velY, i, j, blockSize, stepSize, shiftSize, height, width) for i in range(velSize[0]) for j in range(velSize[1]))
 
+	# try:
+	# 	shutil.rmtree(folder)
+	# except:
+	# 	print("Failed to delete: " + folder)
+
 	return velX, velY
 
 """ Computes motion vectors using 3-step search method
