@@ -2,58 +2,48 @@ import cv2
 import csv
 import numpy as np
 import math
+import sys
 
-from motionEstBM import motionEstTSS
+from p_motionEstBM import motionEstTSS
 
-def getFilePathFromTime(yyyy, mm, dd, hh, mn):
-	return "../../data/tc/images/gray/{:0>4d}{:0>2d}{:0>2d}{:0>2d}{:0>2d}.tir.01.fld.tiff".format(yyyy, mm, dd, hh, mn)
+def getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn):
+	return "{:0>4d}_{:0>4d}{:0>2d}{:0>2d}{:0>2d}{:0>2d}.tir.01.fld.png".format(bt_ID, yyyy, mm, dd, hh, mn)
 
-def calcAMVBlockMatching(im, ref_im):
-	# for visualization
-	im_c = cv2.cvtColor(im, cv2.COLOR_GRAY2BGR)
-	
-	# calculate AMV using block mathing algorithm and visualize it
-	velX, velY = motionEstTSS(im, ref_im, 8, 4, 10)
+def getFilePathFromTime(prefix, bt_ID, yyyy, mm, dd, hh, mn):
+	return prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn)
 
-	if len(velX) == 0 or len(velY) == 0:
-		return
-	
-	# visualization
+def latlon2xy(lat, lon):
+	if lat > 60 or lat < -60 or lon > 205 or lon < 85:
+		return -1, -1
+
+	return int((60 - lat) / 0.067682), int((lon - 85) / 0.067682)
+
+""" Calculate Histogram of Oriented Amotpheric Motion Vector
+"""
+def calcHOAMV(im, ref_im):
+	# get the motion vector
+	velX, velY = calcAMVBM(im, ref_im)
+
+	# calculate the histogram
 	velSize = velX.shape
-	for i in range(0, velSize[0]):
-		for j in range(0, velSize[1]):
-			anchorX = i * 10
-			anchorY = j * 10
 
-			cv2.circle(im_c, (anchorY, anchorX), 1, (0, 0, 255), 1)
-			cv2.line(im_c, (anchorY, anchorX), (anchorY + 2 * velY[i, j], anchorX + 2 * velX[i, j]), (0, 255, 0), 1, cv2.CV_AA)
-	cv2.imwrite("motion.png", im_c)
+""" Calculate Amotpheric Motion Vector using Block Matching algorithm
+"""
+def calcAMVBM(im, ref_im):
+	velX, velY = motionEstTSS(im, ref_im, 16, 4, 10)
 
-def calcAMVAtTime(yyyy, mm, dd, hh, mn):
-	read_mode = 0
+	return velX, velY
 
-	# read image at best-track time
-	impath = getFilePathFromTime(yyyy, mm, dd, hh, mn)
-	im = cv2.imread(impath, read_mode)
-	if read_mode == -1:
-		im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-	
-	# read image at 10-minutes later
-	ref_im_path = getFilePathFromTime(yyyy, mm, dd, hh, mn + 10)
-	ref_im = cv2.imread(ref_im_path, read_mode)
-	if read_mode == -1:
-		ref_im = cv2.cvtColor(ref_im, cv2.COLOR_BGR2GRAY)
-
-	# check if two images have the same size	
-	calcAMVBlockMatching(im, ref_im)
-
-def processByBestTrack(bestTrackFile):
+""" Prepare the training images by cropping around best track point
+"""
+def prepareTrainImages(bestTrackFile):
 	with open(bestTrackFile, 'rb') as btfile:
 		reader = csv.reader(btfile, delimiter=',')
 		
 		index = 0
 		for row in reader:
 			print "Processing TC:", row[7]
+			bt_ID = int(row[1])
 			numOfDataLines = int(row[2])
 			for i in range(numOfDataLines):
 				line = reader.next()
@@ -63,25 +53,69 @@ def processByBestTrack(bestTrackFile):
 				mm = (int)(datetime[2:4])
 				dd = (int)(datetime[4:6])
 				hh = (int)(datetime[6:8])
-				mn = 00
 
-				calcAMVAtTime(yyyy, mm, dd, hh, mn)
+				for mn in [00, 10]:
+					impath = getFilePathFromTime(bt_ID, yyyy, mm, dd, hh, mn)
+					print impath
 
-def test():
-	yyyy = 2015
-	mm = 8
-	dd = 8
-	hh = 0
-	mn = 0
+					im = cv2.imread(impath, 0)
+					height, width = im.shape
 
-	calcAMVAtTime(yyyy, mm, dd, hh, mn)
+					bt_lat = int(line[3]) * 0.1
+					bt_lon = int(line[4]) * 0.1
+
+					row, col = latlon2xy(bt_lat, bt_lon)
+
+					w = 200
+					crop_im = im[row - w if row - w > 0 else 0: row + w if row + w < height else height - 1, 
+								col - w if col - w > 0 else 0 : col + w if col + w < width else width - 1]
+
+					cv2.imwrite("../../train/tc/pos/" + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn), crop_im)
+
+
+""" Training the classifier
+"""
+def train(bestTrackFile):
+	prefix = "../../train/tc/pos/"
+	with open(bestTrackFile, 'rb') as btfile:
+		reader = csv.reader(btfile, delimiter=',')		
+		for row in reader:
+			print "Processing TC:", row[7]
+			
+			bt_ID = int(row[1])
+			
+			numOfDataLines = int(row[2])
+			for i in range(numOfDataLines):
+				line = reader.next()
+				
+				# type of TC
+				tc_type = int(line[2])
+				
+				# get the datetime of the image
+				datetime = line[0]
+				yyyy = 2000 + int(datetime[0:2])
+				mm = (int)(datetime[2:4])
+				dd = (int)(datetime[4:6])
+				hh = (int)(datetime[6:8])
+
+				# read image at best-track time
+				impath = getFilePathFromTime(prefix, bt_ID, yyyy, mm, dd, hh, 00)
+				im = cv2.imread(impath, 0)
+
+				# read image at 10-minutes later
+				ref_im_path = getFilePathFromTime(prefix, bt_ID, yyyy, mm, dd, hh, 10)
+				ref_im = cv2.imread(ref_im_path, 0)
+
+				if im.shape != ref_im.shape:
+					continue
+				
+				calcHOAMV(im, ref_im)
 
 if __name__ == '__main__':
-	# bestTrackFile = "../../data/tc/besttrack/besttrack.csv"
-	# processByBestTrack(bestTrackFile)
-
-	# testing
-	test()
-
+	# prepare training images
+	trainBTFile = "../../data/tc/besttrack/train.csv"
+	
+	# prepareTrainImages(trainBTFile)
+	train(trainBTFile)
 
 			

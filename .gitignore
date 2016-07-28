@@ -1,6 +1,4 @@
 *.pyc
+*.tiff
 *.pgw
-*.tiff
-*.tiff
 *.png
-code/tc_detection/parallel.py
