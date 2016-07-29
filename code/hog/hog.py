@@ -89,7 +89,6 @@ class HOGDetector(object):
 					for j in range(cells_per_block[1]):
 						self._calc_cell_HOG((i, j, i + 1, j + 1))
 
-
 	def compute(self, im, numorient = 9, pixels_per_cell = (8, 8), cells_per_block=(2, 2), magnitude_threshold = 0.0):
 		# initialize parameters
 		self.im = im

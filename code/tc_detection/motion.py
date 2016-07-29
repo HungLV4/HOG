@@ -18,14 +18,42 @@ def latlon2xy(lat, lon):
 
 	return int((60 - lat) / 0.067682), int((lon - 85) / 0.067682)
 
-""" Calculate Histogram of Oriented Amotpheric Motion Vector
+""" Calculate integral image of Histogram of Oriented Amotpheric Motion Vector
 """
-def calcHOAMV(im, ref_im):
+def calcIHOAMV(im, ref_im, num_orient, magnitude_threshold):
 	# get the motion vector
 	velX, velY = calcAMVBM(im, ref_im)
 
-	# calculate the histogram
-	velSize = velX.shape
+	# calculate the Histogram of Oriented Amotpheric Motion Vector
+	height, width = velX.shape
+
+	# calculate absolute magnitude of the AMV
+	magnitude = np.sqrt(velX ** 2 + velY ** 2)
+
+	# set up histogram
+	hist = np.zeros((height, width, num_orient))
+
+	# calc initial orientation histogram
+	mid = num_orient / 2
+	for y in range(height):
+		for x in range(width):
+			if magnitude[y, x] >= magnitude_threshold:
+				angle = np.arctan2(velY[y, x], velX[y, x])
+				orientation = int(math.floor(1 + angle / (np.pi / mid)))
+				
+				hist[y, x, orientation] += magnitude[y, x]
+
+	# calc integral image of Histogram of Oriented Amotpheric Motion Vector
+	integral_hist = np.copy(hist)
+	for y in xrange(1, height):
+		for x in xrange(1, width):
+			for ang in range(num_orient):
+				integral_hist[y, x, ang] += hist[y, x, ang] + \
+											hist[y - 1, x, ang] + \
+											hist[y, x - 1, ang] - \
+											hist[y - 1, x - 1, ang]
+
+	return integral_hist
 
 """ Calculate Amotpheric Motion Vector using Block Matching algorithm
 """
@@ -37,6 +65,7 @@ def calcAMVBM(im, ref_im):
 """ Prepare the training images by cropping around best track point
 """
 def prepareTrainImages(bestTrackFile):
+	prefix = "../../data/tc/images/"
 	with open(bestTrackFile, 'rb') as btfile:
 		reader = csv.reader(btfile, delimiter=',')
 		
@@ -55,7 +84,7 @@ def prepareTrainImages(bestTrackFile):
 				hh = (int)(datetime[6:8])
 
 				for mn in [00, 10]:
-					impath = getFilePathFromTime(bt_ID, yyyy, mm, dd, hh, mn)
+					impath = getFilePathFromTime(prefix, bt_ID, yyyy, mm, dd, hh, mn)
 					print impath
 
 					im = cv2.imread(impath, 0)
@@ -71,7 +100,6 @@ def prepareTrainImages(bestTrackFile):
 								col - w if col - w > 0 else 0 : col + w if col + w < width else width - 1]
 
 					cv2.imwrite("../../train/tc/pos/" + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn), crop_im)
-
 
 """ Training the classifier
 """
@@ -109,7 +137,10 @@ def train(bestTrackFile):
 				if im.shape != ref_im.shape:
 					continue
 				
-				calcHOAMV(im, ref_im)
+				# calculate the integral image of HOAMV
+				integral_hist = calcIHOAMV(im, ref_im, 9, 1)
+
+				# calculate the descriptor of HOAMV
 
 if __name__ == '__main__':
 	# prepare training images
