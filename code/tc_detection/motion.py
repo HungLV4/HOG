@@ -4,11 +4,15 @@ import csv
 import numpy as np
 from numpy import linalg as LA
 
+from sklearn.svm import LinearSVC
+
 import math
 import sys
 import os
 
 from p_motionEstBM import motionEstTSS
+
+CLF_FILE = "../../genfiles/tc_clf.pkl"
 
 def getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn):
 	return "{:0>4d}_{:0>4d}{:0>2d}{:0>2d}{:0>2d}{:0>2d}.tir.01.fld".format(bt_ID, yyyy, mm, dd, hh, mn)
@@ -99,8 +103,8 @@ def calcHODescriptor(integral_hist, ppc, cpb):
 	descriptor = []
 
 	# calculate cell histogram and block-normalization
-	for y in xrange(0, height - (cpb - 1) * ppc, ppc / 2):
-		for x in xrange(0, width - (cpb - 1) * ppc, ppc / 2):
+	for y in xrange(0, height - (cpb - 1) * ppc, ppc):
+		for x in xrange(0, width - (cpb - 1) * ppc, ppc):
 			# block feature
 			block_features = []
 			
@@ -116,7 +120,6 @@ def calcHODescriptor(integral_hist, ppc, cpb):
 							block_features.append(val)
 			# L2-norm block normalization
 			block_features = l2_normalization(block_features)
-
 			descriptor = descriptor + block_features
 	
 	# change to numpy array for computation
@@ -157,7 +160,7 @@ def calcAMVBM(im, ref_im):
 
 """ Prepare the training images by cropping around best track point
 """
-def prepareTrainImages(btTrainFile, trainFile):
+def prepareImages(btTrainFile, trainFile):
 	prefix = "../../data/tc/images/"
 	with open(btTrainFile, 'rb') as btfile, open(trainFile, 'wb') as tFile:
 		reader = csv.reader(btfile, delimiter=',')
@@ -198,7 +201,8 @@ def prepareTrainImages(btTrainFile, trainFile):
 						
 						if mn == 00:
 							writer.writerow([bt_ID, datetime, tc_type])
-						cv2.imwrite("../../train/tc/pos/" + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn), crop_im)
+						
+						cv2.imwrite("../../test/tc/pos/" + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn), crop_im)
 
 """ Training the classifier
 """
@@ -238,6 +242,9 @@ def calcAMVImages(trainFile):
 
 def train(trainFile):
 	in_prefix = "../../genfiles/motion/"
+	
+	features = []
+	labels = []
 	with open(trainFile, 'rb') as tFile:
 		reader = csv.reader(tFile, delimiter=',')
 		for line in reader:
@@ -251,20 +258,31 @@ def train(trainFile):
 			dd = (int)(datetime[4:6])
 			hh = (int)(datetime[6:8])
 
+			print bt_ID, datetime
+
 			velX = np.load(in_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy")
 			velY = np.load(in_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy")
 
 			# calculate the HOG
 			descriptor = calcDescriptor(velX, velY)
+			features.append(descriptor)
+			labels.append(tc_type)
+	
+	clf = LinearSVC()
+	clf.fit(features, labels)
+	joblib.dump(clf, CLF_FILE, compress=3)
 
 if __name__ == '__main__':
 	# prepare training images
 	btTrainFile = "../../data/tc/besttrack/train.csv"
 	trainFile = "../../train/tc/pos.csv"
+	
+	btTestFile = "../../data/tc/besttrack/test.csv"
+	testFile = "../../test/tc/pos.csv"
 
 	
-	# prepareTrainImages(btTrainFile, trainFile)
+	prepareImages(btTestFile, testFile)
 	# calcAMVImages(trainFile)
-	train(trainFile)
+	# train(trainFile)
 
 			
