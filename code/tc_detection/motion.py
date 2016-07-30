@@ -202,10 +202,10 @@ def prepareTrainImages(btTrainFile, trainFile):
 
 """ Training the classifier
 """
-def calcAMVImages(bestTrackFile):
+def calcAMVImages(trainFile):
 	in_prefix = "../../train/tc/pos/"
 	out_prefix = "../../genfiles/motion/"
-	with open(bestTrackFile, 'rb') as btfile:
+	with open(trainFile, 'rb') as btfile:
 		reader = csv.reader(btfile, delimiter=',')		
 		for line in reader:		
 			bt_ID = int(line[0])
@@ -236,8 +236,26 @@ def calcAMVImages(bestTrackFile):
 			np.save(out_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy", velX)
 			np.save(out_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy", velY)
 
+def train(trainFile):
+	in_prefix = "../../genfiles/motion/"
+	with open(trainFile, 'rb') as tFile:
+		reader = csv.reader(tFile, delimiter=',')
+		for line in reader:
+			bt_ID = int(line[0])
+			tc_type = int(line[2])
+			
+			# get the datetime of the image
+			datetime = line[1]
+			yyyy = 2000 + int(datetime[0:2])
+			mm = (int)(datetime[2:4])
+			dd = (int)(datetime[4:6])
+			hh = (int)(datetime[6:8])
+
+			velX = np.load(in_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy")
+			velY = np.load(in_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy")
+
 			# calculate the HOG
-			# descriptor = calcDescriptor(velX, velY)
+			descriptor = calcDescriptor(velX, velY)
 
 if __name__ == '__main__':
 	# prepare training images
@@ -246,6 +264,7 @@ if __name__ == '__main__':
 
 	
 	# prepareTrainImages(btTrainFile, trainFile)
-	calcAMVImages(trainFile)
+	# calcAMVImages(trainFile)
+	train(trainFile)
 
 			
