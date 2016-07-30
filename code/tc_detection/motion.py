@@ -208,9 +208,7 @@ def calcAMVImages(bestTrackFile):
 	with open(bestTrackFile, 'rb') as btfile:
 		reader = csv.reader(btfile, delimiter=',')		
 		for line in reader:		
-			bt_ID = int(row[0])
-
-			# type of TC
+			bt_ID = int(line[0])
 			tc_type = int(line[2])
 			
 			# get the datetime of the image
@@ -231,6 +229,8 @@ def calcAMVImages(bestTrackFile):
 			if im.shape != ref_im.shape:
 				continue
 			
+			print "Processing:", impath
+
 			# calculate the AMV
 			velX, velY = calcAMVBM(im, ref_im)
 			np.save(out_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy", velX)
