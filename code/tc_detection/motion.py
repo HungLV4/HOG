@@ -6,6 +6,7 @@ from numpy import linalg as LA
 
 import math
 import sys
+import os
 
 from p_motionEstBM import motionEstTSS
 
@@ -156,10 +157,11 @@ def calcAMVBM(im, ref_im):
 
 """ Prepare the training images by cropping around best track point
 """
-def prepareTrainImages(bestTrackFile):
+def prepareTrainImages(btTrainFile, trainFile):
 	prefix = "../../data/tc/images/"
-	with open(bestTrackFile, 'rb') as btfile:
+	with open(btTrainFile, 'rb') as btfile, open(trainFile, 'wb') as tFile:
 		reader = csv.reader(btfile, delimiter=',')
+		writer = csv.writer(tFile, delimiter=',')
 		
 		index = 0
 		for row in reader:
@@ -168,8 +170,10 @@ def prepareTrainImages(bestTrackFile):
 			numOfDataLines = int(row[2])
 			for i in range(numOfDataLines):
 				line = reader.next()
-				datetime = line[0]
 				
+				status = line[2]
+
+				datetime = line[0]
 				yyyy = 2000 + int(datetime[0:2])
 				mm = (int)(datetime[2:4])
 				dd = (int)(datetime[4:6])
@@ -177,7 +181,8 @@ def prepareTrainImages(bestTrackFile):
 
 				for mn in [00, 10]:
 					impath = getFilePathFromTime(prefix, bt_ID, yyyy, mm, dd, hh, mn)
-					print impath
+					if not os.path.isfile(impath):
+						continue
 
 					im = cv2.imread(impath, 0)
 					height, width = im.shape
@@ -187,11 +192,12 @@ def prepareTrainImages(bestTrackFile):
 
 					row, col = latlon2xy(bt_lat, bt_lon)
 
-					w = 205
-					crop_im = im[row - w if row - w > 0 else 0: row + w if row + w < height else height - 1, 
-								col - w if col - w > 0 else 0 : col + w if col + w < width else width - 1]
-
-					cv2.imwrite("../../train/tc/pos/" + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn), crop_im)
+					w = 167
+					if row - w > 0 and row + w + 1 < height and col - 1 > 0 and col + w + 1 < width:
+						crop_im = im[row - w : row + w + 1, col - w : col + w + 1]
+						
+						writer.writerow([getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn), status])
+						cv2.imwrite("../../train/tc/pos/" + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn), crop_im)
 
 """ Training the classifier
 """
@@ -238,9 +244,11 @@ def train(bestTrackFile):
 
 if __name__ == '__main__':
 	# prepare training images
-	trainBTFile = "../../data/tc/besttrack/sample.csv"
+	btTrainFile = "../../data/tc/besttrack/train.csv"
+	trainFile = "../../train/tc/pos.csv"
+
 	
-	# prepareTrainImages(trainBTFile)
-	train(trainBTFile)
+	prepareTrainImages(btTrainFile, trainFile)
+	# train(trainFile)
 
 			

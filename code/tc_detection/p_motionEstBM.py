@@ -19,52 +19,48 @@ def evalMAD(mb1, mb2):
 			cost += abs(int(mb1[i, j]) - int(mb2[i, j]))
 	return cost / (height * width)
 
-def estTSS(curI, nextI, velX, velY, i, j, blockSize, stepSize, shiftSize, height, width):
-	if i * shiftSize < blockSize or j * shiftSize < blockSize:
-		velX[i, j] = 0
-		velY[i, j] = 0
-	else:
-		# original block
-		newOrigX = i * shiftSize
-		newOrigY = j * shiftSize
+def estTSS(curI, nextI, velX, velY, i, j, block_r, stepSize, shiftSize, height, width):
+	# original block
+	newOrigX = i * shiftSize + block_r
+	newOrigY = j * shiftSize + block_r
+	
+	origMb = curI[newOrigX - block_r : newOrigX + block_r, 
+				newOrigY - block_r: newOrigY + block_r]
+
+	_stepSize = stepSize
+	while _stepSize >= 1:
+		# calculate cost at same position and initiate as minCost
+		refMb = nextI[newOrigX - block_r : newOrigX + block_r, 
+					newOrigY - block_r: newOrigY + block_r]
 		
-		origMb = curI[newOrigX - blockSize : newOrigX + blockSize, 
-					newOrigY - blockSize: newOrigY + blockSize]
+		minCost = evalMAD(origMb, refMb)
 
-		_stepSize = stepSize
-		while _stepSize >= 1:
-			# calculate cost at same position and initiate as minCost
-			refMb = nextI[newOrigX - blockSize : newOrigX + blockSize, 
-						newOrigY - blockSize: newOrigY + blockSize]
-			
-			minCost = evalMAD(origMb, refMb)
+		for x in xrange(-1,2,1):
+			for y in xrange(-1,2,1):
+				if x == 0 and y == 0:
+					continue
 
-			for x in xrange(-1,2,1):
-				for y in xrange(-1,2,1):
-					if x == 0 and y == 0:
-						continue
-
-					# calculate ref position
-					refX = x * _stepSize + newOrigX
-					refY = y * _stepSize + newOrigY
-					if refX < blockSize or refY < blockSize or refX + blockSize >= height or refY + blockSize >= width:
-						continue
-					
-					# get the ref block
-					refMb = nextI[refX - blockSize: refX + blockSize, refY - blockSize: refY + blockSize]
-					
-					# calculate cost at new position
-					cost = evalMAD(origMb, refMb)
-											
-					if cost < minCost:
-						minCost = cost
-						newOrigX = refX
-						newOrigY = refY
-			
-			_stepSize = _stepSize / 2
+				# calculate ref position
+				refX = x * _stepSize + newOrigX
+				refY = y * _stepSize + newOrigY
+				if refX < block_r or refY < block_r or refX + block_r >= height or refY + block_r >= width:
+					continue
+				
+				# get the ref block
+				refMb = nextI[refX - block_r: refX + block_r, refY - block_r: refY + block_r]
+				
+				# calculate cost at new position
+				cost = evalMAD(origMb, refMb)
+										
+				if cost < minCost:
+					minCost = cost
+					newOrigX = refX
+					newOrigY = refY
 		
-		velX[i, j] = newOrigX - i * shiftSize
-		velY[i, j] = newOrigY - j * shiftSize
+		_stepSize = _stepSize / 2
+	
+	velX[i, j] = newOrigX - i * shiftSize
+	velY[i, j] = newOrigY - j * shiftSize
 	
 """ Computes motion vectors using 3-step search method
 Input:
@@ -91,7 +87,9 @@ def motionEstTSS(curI, nextI, blockSize, stepSize, shiftSize):
 
 	# get pre-defined size
 	height, width = curI.shape
-	velSize = ((height - blockSize + shiftSize) / shiftSize, (width - blockSize + shiftSize) / shiftSize)
+	
+	block_r = blockSize / 2
+	velSize = ((height + 1 - 2 * block_r) / shiftSize, (width + 1 - 2 * block_r) / shiftSize)
 	
 	# get the number of system cores
 	num_cores = multiprocessing.cpu_count()
@@ -113,7 +111,7 @@ def motionEstTSS(curI, nextI, blockSize, stepSize, shiftSize):
 	nextI = load(nextI_path, mmap_mode='r')
 
 	# Fork the worker processes to perform motion vector computation concurrently
-	Parallel(n_jobs=num_cores)(delayed(estTSS)(curI, nextI, velX, velY, i, j, blockSize, stepSize, shiftSize, height, width) for i in range(velSize[0]) for j in range(velSize[1]))
+	Parallel(n_jobs=num_cores)(delayed(estTSS)(curI, nextI, velX, velY, i, j, block_r, stepSize, shiftSize, height, width) for i in range(velSize[0]) for j in range(velSize[1]))
 
 	# try:
 	# 	shutil.rmtree(folder)
