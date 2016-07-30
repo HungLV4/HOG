@@ -4,6 +4,7 @@ import csv
 import numpy as np
 from numpy import linalg as LA
 
+from sklearn.externals import joblib
 from sklearn.svm import LinearSVC
 
 import math
@@ -289,6 +290,40 @@ def train(trainFile):
 	clf.fit(features, labels)
 	joblib.dump(clf, CLF_FILE, compress=3)
 
+def test(testFile):
+	in_prefix = "../../genfiles/motion/"
+
+	# load clf
+	clf = joblib.load(CLF_FILE)
+	correct = np.zeros(9)
+	not_correct = np.zeros(9)
+	with open(testFile, 'rb') as tFile:
+		reader = csv.reader(tFile, delimiter=',')
+		for line in reader:
+			bt_ID = int(line[0])
+			tc_type = int(line[2])
+			
+			# get the datetime of the image
+			datetime = line[1]
+			yyyy = 2000 + int(datetime[0:2])
+			mm = (int)(datetime[2:4])
+			dd = (int)(datetime[4:6])
+			hh = (int)(datetime[6:8])
+
+			print bt_ID, datetime
+
+			velX = np.load(in_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy")
+			velY = np.load(in_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy")
+
+			descriptor = calcDescriptor(velX, velY)
+			nbr = clf.predict(np.array([descriptor], 'float64'))
+
+			if tc_type == int(nbr[0]):
+				correct[tc_type - 1] += 1
+			else:
+				not_correct[tc_type - 1] += 1
+	print correct, not_correct
+
 if __name__ == '__main__':
 	# prepare training images
 	btTrainFile = "../../data/tc/besttrack/train.csv"
@@ -302,5 +337,6 @@ if __name__ == '__main__':
 	# calcAMVImages(trainFile)
 
 	# train(trainFile)
+	test(testFile)
 
 			
