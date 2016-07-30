@@ -1,6 +1,9 @@
 import cv2
 import csv
+
 import numpy as np
+from numpy import linalg as LA
+
 import math
 import sys
 
@@ -18,32 +21,60 @@ def latlon2xy(lat, lon):
 
 	return int((60 - lat) / 0.067682), int((lon - 85) / 0.067682)
 
-""" Calculate integral image of Histogram of Oriented Amotpheric Motion Vector
+""" L2-Normalization for a list
+	Params:
+		x: list of value
 """
-def calcIHOAMV(im, ref_im, num_orient, magnitude_threshold):
-	# get the motion vector
-	velX, velY = calcAMVBM(im, ref_im)
+def l2_normalization(x):
+	l2_norm  = LA.norm(x)
+	if l2_norm > 0:
+		for i in range(len(x)):
+			x[i] = x[i] / l2_norm
+	return x
 
-	# calculate the Histogram of Oriented Amotpheric Motion Vector
+""" Calculate the Histogram of Orientation
+	The angle is positive number in range of [0, 180]
+	Params:
+		num_orient: number of bins
+		magnitude_threshold: minimum motion/gradient magnitude to contribute to histogram
+"""
+def calcHO(velX, velY, num_orient, magnitude_threshold):
 	height, width = velX.shape
 
-	# calculate absolute magnitude of the AMV
+	# calculate absolute magnitude of the AMV/Gradient
 	magnitude = np.sqrt(velX ** 2 + velY ** 2)
 
 	# set up histogram
 	hist = np.zeros((height, width, num_orient))
 
-	# calc initial orientation histogram
-	mid = num_orient / 2
+	# calc cell orientation histogram
+	bin_w = 180 / num_orient
 	for y in range(height):
 		for x in range(width):
 			if magnitude[y, x] >= magnitude_threshold:
-				angle = np.arctan2(velY[y, x], velX[y, x])
-				orientation = int(math.floor(1 + angle / (np.pi / mid)))
-				
-				hist[y, x, orientation] += magnitude[y, x]
+				angle = (180 / np.pi) * (np.arctan2(velY[y, x], velX[y, x]) % np.pi)
 
-	# calc integral image of Histogram of Oriented Amotpheric Motion Vector
+				# calc orientation using bilinear interpolation
+
+				# major bin
+				m_bin = int(angle  / bin_w - 0.5) % num_orient
+
+				neig_offset = -1
+				if angle > bin_w * (m_bin + 0.5):
+					neig_offset = 1
+				
+				hist[y, x, m_bin] += magnitude[y, x] * abs(angle - bin_w * (m_bin + neig_offset + 0.5) ) / bin_w
+				hist[y, x, m_bin + neig_offset] += magnitude[y, x] * abs(angle - bin_w * (m_bin + 0.5)) / bin_w
+	return hist
+
+""" Calculate integral image of Histogram of Oriented "Amotpheric Motion Vector"/Gradient
+"""
+def calcIHO(velX, velY, num_orient, magnitude_threshold):
+	hist = calcHO(velX, velY, num_orient, magnitude_threshold)
+	
+	height, width, _ = hist.shape
+
+	# calc integral image of HOAMV/HOG
 	integral_hist = np.copy(hist)
 	for y in xrange(1, height):
 		for x in xrange(1, width):
@@ -55,10 +86,71 @@ def calcIHOAMV(im, ref_im, num_orient, magnitude_threshold):
 
 	return integral_hist
 
+""" Calculate the descriptor of HOG/HOAMV
+	Params:
+		ppc: pixels per cell
+		cpb: cells per block
+"""
+def calcHODescriptor(integral_hist, ppc, cpb):
+	height, width, num_orient = integral_hist.shape
+	epsilon = 0.1
+	tau = 0.2
+	descriptor = []
+
+	# calculate cell histogram and block-normalization
+	for y in xrange(0, height - (cpb - 1) * ppc, ppc / 2):
+		for x in xrange(0, width - (cpb - 1) * ppc, ppc / 2):
+			# block feature
+			block_features = []
+			
+			if y + (cpb - 1) * ppc + (ppc - 1) < height and x + (cpb - 1) * ppc + (ppc - 1) < width:	
+				# calculate hog vector for each cell in block
+				for i in range(cpb):
+					for j in range(cpb):				
+						for b in range(num_orient):
+							val = integral_hist[y + i * ppc, x + j * ppc, b] + \
+									integral_hist[y + i * ppc + (ppc - 1), x + j * ppc + (ppc - 1), b] - \
+									integral_hist[y + i * ppc + (ppc - 1), x + j * ppc, b] - \
+									integral_hist[y + i * ppc, x + j * ppc + (ppc - 1), b]
+							block_features.append(val)
+			# L2-norm block normalization
+			block_features = l2_normalization(block_features)
+
+			descriptor = descriptor + block_features
+	
+	# change to numpy array for computation
+	descriptor = np.array(descriptor)
+	
+	# L2-norm
+	descriptor = l2_normalization(descriptor)
+	
+	# filter out large value
+	descriptor[descriptor > tau] = tau
+
+	# L2-norm again
+	descriptor = l2_normalization(descriptor)
+
+	return descriptor
+
+""" Calculate the descripptor
+"""
+def calcDescriptor(velX, velY):
+	# calculate the integral image of HOAMV/HOG
+	num_orient = 9
+	amv_threshold = 1
+	integral_hist = calcIHO(velX, velY, num_orient, amv_threshold)
+
+	# calculate the descriptor of HOAMV
+	pixel_per_cell = 8
+	cell_per_block = 2
+	descriptor = calcHODescriptor(integral_hist, pixel_per_cell, cell_per_block)
+
+	return descriptor
+
 """ Calculate Amotpheric Motion Vector using Block Matching algorithm
 """
 def calcAMVBM(im, ref_im):
-	velX, velY = motionEstTSS(im, ref_im, 16, 4, 10)
+	velX, velY = motionEstTSS(im, ref_im, 17, 4, 10)
 
 	return velX, velY
 
@@ -95,7 +187,7 @@ def prepareTrainImages(bestTrackFile):
 
 					row, col = latlon2xy(bt_lat, bt_lon)
 
-					w = 200
+					w = 205
 					crop_im = im[row - w if row - w > 0 else 0: row + w if row + w < height else height - 1, 
 								col - w if col - w > 0 else 0 : col + w if col + w < width else width - 1]
 
@@ -137,14 +229,16 @@ def train(bestTrackFile):
 				if im.shape != ref_im.shape:
 					continue
 				
-				# calculate the integral image of HOAMV
-				integral_hist = calcIHOAMV(im, ref_im, 9, 1)
+				# calculate the AMV
+				velX, velY = calcAMVBM(im, ref_im)
+				print velX.shape
 
-				# calculate the descriptor of HOAMV
+				# calculate the HOG
+				# descriptor = calcDescriptor(velX, velY)
 
 if __name__ == '__main__':
 	# prepare training images
-	trainBTFile = "../../data/tc/besttrack/train.csv"
+	trainBTFile = "../../data/tc/besttrack/sample.csv"
 	
 	# prepareTrainImages(trainBTFile)
 	train(trainBTFile)
