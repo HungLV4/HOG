@@ -11,10 +11,10 @@ import os
 from p_motionEstBM import motionEstTSS
 
 def getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn):
-	return "{:0>4d}_{:0>4d}{:0>2d}{:0>2d}{:0>2d}{:0>2d}.tir.01.fld.png".format(bt_ID, yyyy, mm, dd, hh, mn)
+	return "{:0>4d}_{:0>4d}{:0>2d}{:0>2d}{:0>2d}{:0>2d}.tir.01.fld".format(bt_ID, yyyy, mm, dd, hh, mn)
 
 def getFilePathFromTime(prefix, bt_ID, yyyy, mm, dd, hh, mn):
-	return prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn)
+	return prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn) + ".png"
 
 def latlon2xy(lat, lon):
 	if lat > 60 or lat < -60 or lon > 205 or lon < 85:
@@ -171,7 +171,7 @@ def prepareTrainImages(btTrainFile, trainFile):
 			for i in range(numOfDataLines):
 				line = reader.next()
 				
-				status = line[2]
+				tc_type = line[2]
 
 				datetime = line[0]
 				yyyy = 2000 + int(datetime[0:2])
@@ -196,51 +196,48 @@ def prepareTrainImages(btTrainFile, trainFile):
 					if row - w > 0 and row + w + 1 < height and col - 1 > 0 and col + w + 1 < width:
 						crop_im = im[row - w : row + w + 1, col - w : col + w + 1]
 						
-						writer.writerow([getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn), status])
+						if mn == 00:
+							writer.writerow([bt_ID, datetime, tc_type])
 						cv2.imwrite("../../train/tc/pos/" + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn), crop_im)
 
 """ Training the classifier
 """
-def train(bestTrackFile):
-	prefix = "../../train/tc/pos/"
+def calcAMVImages(bestTrackFile):
+	in_prefix = "../../train/tc/pos/"
+	out_prefix = "../../genfiles/motion/"
 	with open(bestTrackFile, 'rb') as btfile:
 		reader = csv.reader(btfile, delimiter=',')		
-		for row in reader:
-			print "Processing TC:", row[7]
+		for line in reader:		
+			bt_ID = int(row[0])
+
+			# type of TC
+			tc_type = int(line[2])
 			
-			bt_ID = int(row[1])
+			# get the datetime of the image
+			datetime = line[1]
+			yyyy = 2000 + int(datetime[0:2])
+			mm = (int)(datetime[2:4])
+			dd = (int)(datetime[4:6])
+			hh = (int)(datetime[6:8])
+
+			# read image at best-track time
+			impath = getFilePathFromTime(in_prefix, bt_ID, yyyy, mm, dd, hh, 00)
+			im = cv2.imread(impath, 0)
+
+			# read image at 10-minutes later
+			ref_im_path = getFilePathFromTime(in_prefix, bt_ID, yyyy, mm, dd, hh, 10)
+			ref_im = cv2.imread(ref_im_path, 0)
+
+			if im.shape != ref_im.shape:
+				continue
 			
-			numOfDataLines = int(row[2])
-			for i in range(numOfDataLines):
-				line = reader.next()
-				
-				# type of TC
-				tc_type = int(line[2])
-				
-				# get the datetime of the image
-				datetime = line[0]
-				yyyy = 2000 + int(datetime[0:2])
-				mm = (int)(datetime[2:4])
-				dd = (int)(datetime[4:6])
-				hh = (int)(datetime[6:8])
+			# calculate the AMV
+			velX, velY = calcAMVBM(im, ref_im)
+			np.save(out_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy", velX)
+			np.save(out_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy", velY)
 
-				# read image at best-track time
-				impath = getFilePathFromTime(prefix, bt_ID, yyyy, mm, dd, hh, 00)
-				im = cv2.imread(impath, 0)
-
-				# read image at 10-minutes later
-				ref_im_path = getFilePathFromTime(prefix, bt_ID, yyyy, mm, dd, hh, 10)
-				ref_im = cv2.imread(ref_im_path, 0)
-
-				if im.shape != ref_im.shape:
-					continue
-				
-				# calculate the AMV
-				velX, velY = calcAMVBM(im, ref_im)
-				print velX.shape
-
-				# calculate the HOG
-				# descriptor = calcDescriptor(velX, velY)
+			# calculate the HOG
+			# descriptor = calcDescriptor(velX, velY)
 
 if __name__ == '__main__':
 	# prepare training images
@@ -248,7 +245,7 @@ if __name__ == '__main__':
 	trainFile = "../../train/tc/pos.csv"
 
 	
-	prepareTrainImages(btTrainFile, trainFile)
-	# train(trainFile)
+	# prepareTrainImages(btTrainFile, trainFile)
+	calcAMVImages(trainFile)
 
 			
