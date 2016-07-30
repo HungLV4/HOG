@@ -1,0 +1,14 @@
+66666 		1501  032 				0001 	1501 0 				 6       MEKKHALA    20150217
+Indicator	ID    Nuber of lines    TC ID   ID   0: disipation	 Diff	 Name of TC  Date of latest revision
+												 1: out of area
+
+15011312  002 	3							086 		1417 		1002     		035     		...
+YYMMDDHH 	 	1: Not used					Latitude	Longitude	Pressure		Max WS (knot)
+				2: Tropical Depression
+				3: Tropical Storm
+				4: Servere Tropical Storm
+				5: Typhoon
+				6: Extra TC
+				7: Just entering into the responsible area of JMA
+				8: Not used
+				9: TC of TS intensity or higher
