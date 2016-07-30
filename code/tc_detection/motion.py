@@ -62,14 +62,26 @@ def calcHO(velX, velY, num_orient, magnitude_threshold):
 				# calc orientation using bilinear interpolation
 
 				# major bin
-				m_bin = int(angle  / bin_w - 0.5) % num_orient
+				m_bin = int(angle  / bin_w)
+				if m_bin >= num_orient:
+					m_bin = num_orient - 1
 
 				neig_offset = -1
 				if angle > bin_w * (m_bin + 0.5):
 					neig_offset = 1
 				
-				hist[y, x, m_bin] += magnitude[y, x] * abs(angle - bin_w * (m_bin + neig_offset + 0.5) ) / bin_w
-				hist[y, x, m_bin + neig_offset] += magnitude[y, x] * abs(angle - bin_w * (m_bin + 0.5)) / bin_w
+				if m_bin == 0 and neig_offset == -1:
+					hist[y, x, 8] = magnitude[y, x] * abs(angle - bin_w * (0 + 0.5)) / bin_w
+					angle = 180 + angle
+					hist[y, x, 0] = magnitude[y, x] * abs(angle - bin_w * (8 + 0.5)) / bin_w
+				elif m_bin == 8 and neig_offset == 1:
+					hist[y, x, 0] += magnitude[y, x] * abs(angle - bin_w * (8 + 0.5)) / bin_w
+					angle = angle - 180
+					hist[y, x, 8] += magnitude[y, x] * abs(angle - bin_w * (0 + 0.5)) / bin_w
+				else:
+					hist[y, x, m_bin] += magnitude[y, x] * abs(angle - bin_w * (m_bin + neig_offset + 0.5) ) / bin_w
+					hist[y, x, m_bin + neig_offset] += magnitude[y, x] * abs(angle - bin_w * (m_bin + 0.5)) / bin_w
+
 	return hist
 
 """ Calculate integral image of Histogram of Oriented "Amotpheric Motion Vector"/Gradient
@@ -160,9 +172,14 @@ def calcAMVBM(im, ref_im):
 
 """ Prepare the training images by cropping around best track point
 """
-def prepareImages(btTrainFile, trainFile):
+def prepareImages(btFile, out_file, mode):
 	prefix = "../../data/tc/images/"
-	with open(btTrainFile, 'rb') as btfile, open(trainFile, 'wb') as tFile:
+	if mode == 1:
+		out_prefix = "../../train/tc/pos/"
+	else:
+		out_prefix = "../../test/tc/pos/"
+
+	with open(btFile, 'rb') as btfile, open(out_file, 'wb') as tFile:
 		reader = csv.reader(btfile, delimiter=',')
 		writer = csv.writer(tFile, delimiter=',')
 		
@@ -202,15 +219,15 @@ def prepareImages(btTrainFile, trainFile):
 						if mn == 00:
 							writer.writerow([bt_ID, datetime, tc_type])
 						
-						cv2.imwrite("../../test/tc/pos/" + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn) + ".png", crop_im)
+						cv2.imwrite(out_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn), crop_im)
 
 """ Training the classifier
 """
-def calcAMVImages(trainFile):
+def calcAMVImages(filepath):
 	in_prefix = "../../train/tc/pos/"
 	out_prefix = "../../genfiles/motion/"
-	with open(trainFile, 'rb') as btfile:
-		reader = csv.reader(btfile, delimiter=',')		
+	with open(filepath, 'rb') as file:
+		reader = csv.reader(file, delimiter=',')		
 		for line in reader:		
 			bt_ID = int(line[0])
 			tc_type = int(line[2])
@@ -280,8 +297,10 @@ if __name__ == '__main__':
 	btTestFile = "../../data/tc/besttrack/test.csv"
 	testFile = "../../test/tc/pos.csv"
 
-	# prepareImages(btTestFile, testFile)
-	calcAMVImages(trainFile)
+	# prepareImages(btTestFile, testFile, 0)
+
+	# calcAMVImages(trainFile)
+
 	# train(trainFile)
 
 			
