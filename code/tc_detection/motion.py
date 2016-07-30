@@ -202,7 +202,7 @@ def prepareImages(btTrainFile, trainFile):
 						if mn == 00:
 							writer.writerow([bt_ID, datetime, tc_type])
 						
-						cv2.imwrite("../../test/tc/pos/" + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn), crop_im)
+						cv2.imwrite("../../test/tc/pos/" + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn) + ".png", crop_im)
 
 """ Training the classifier
 """
@@ -280,9 +280,8 @@ if __name__ == '__main__':
 	btTestFile = "../../data/tc/besttrack/test.csv"
 	testFile = "../../test/tc/pos.csv"
 
-	
-	prepareImages(btTestFile, testFile)
-	# calcAMVImages(trainFile)
+	# prepareImages(btTestFile, testFile)
+	calcAMVImages(trainFile)
 	# train(trainFile)
 
 			
