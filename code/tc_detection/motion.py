@@ -234,7 +234,7 @@ def calcAMVImages(bestTrackFile):
 			# calculate the AMV
 			velX, velY = calcAMVBM(im, ref_im)
 			np.save(out_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy", velX)
-			np.save(out_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy", velY)
+			np.save(out_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy", velY)
 
 			# calculate the HOG
 			# descriptor = calcDescriptor(velX, velY)
