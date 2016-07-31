@@ -361,11 +361,11 @@ if __name__ == '__main__':
 
 	amv_prefix = "../../genfiles/motion/"
 
-	# cropImagesByBestTrack(im_full_prefix, im_area_prefix, train_full_bt_filepath, train_area_bt_filepath)
-	# cropImagesByBestTrack(im_full_prefix, im_area_prefix, test_full_bt_filepath, test_area_bt_filepath)
+	cropImagesByBestTrack(im_full_prefix, im_area_prefix, train_full_bt_filepath, train_area_bt_filepath)
+	cropImagesByBestTrack(im_full_prefix, im_area_prefix, test_full_bt_filepath, test_area_bt_filepath)
 
-	calcAMVImages(im_area_prefix, amv_prefix, train_area_bt_filepath)
-	calcAMVImages(im_area_prefix, amv_prefix, test_area_bt_filepath)
+	# calcAMVImages(im_area_prefix, amv_prefix, train_area_bt_filepath)
+	# calcAMVImages(im_area_prefix, amv_prefix, test_area_bt_filepath)
 	
 	# visualizeAMV(amv_prefix, im_area_prefix, train_area_bt_filepath)
 	# visualizeAMV(amv_prefix, im_area_prefix, test_area_bt_filepath)
