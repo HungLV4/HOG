@@ -7,7 +7,7 @@ from joblib import Parallel, delayed
 from joblib import load, dump
 
 import multiprocessing
-
+import shutil
 
 """ Computes the Mean Absolute Difference (MAD)
 """
@@ -59,8 +59,8 @@ def estTSS(curI, nextI, velX, velY, i, j, block_r, stepSize, shiftSize, height, 
 		
 		_stepSize = _stepSize / 2
 	
-	velX[i, j] = newOrigX - i * shiftSize
-	velY[i, j] = newOrigY - j * shiftSize
+	velX[i, j] = newOrigX - (i * shiftSize + block_r)
+	velY[i, j] = newOrigY - (j * shiftSize + block_r)
 	
 """ Computes motion vectors using 3-step search method
 Input:
@@ -113,10 +113,10 @@ def motionEstTSS(curI, nextI, blockSize, stepSize, shiftSize):
 	# Fork the worker processes to perform motion vector computation concurrently
 	Parallel(n_jobs=num_cores)(delayed(estTSS)(curI, nextI, velX, velY, i, j, block_r, stepSize, shiftSize, height, width) for i in range(velSize[0]) for j in range(velSize[1]))
 
-	# try:
-	# 	shutil.rmtree(folder)
-	# except:
-	# 	print("Failed to delete: " + folder)
+	try:
+		shutil.rmtree(folder)
+	except:
+		print("Failed to delete: " + folder)
 
 	return velX, velY
 

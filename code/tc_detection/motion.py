@@ -167,22 +167,16 @@ def calcDescriptor(velX, velY):
 """ Calculate Amotpheric Motion Vector using Block Matching algorithm
 """
 def calcAMVBM(im, ref_im):
-	velX, velY = motionEstTSS(im, ref_im, 17, 4, 10)
+	velX, velY = motionEstTSS(im, ref_im, 25, 4, 10)
 
 	return velX, velY
 
 """ Prepare the training images by cropping around best track point
 """
-def prepareImages(btFile, out_file, mode):
-	prefix = "../../data/tc/images/"
-	if mode == 1:
-		out_prefix = "../../train/tc/pos/"
-	else:
-		out_prefix = "../../test/tc/pos/"
-
-	with open(btFile, 'rb') as btfile, open(out_file, 'wb') as tFile:
-		reader = csv.reader(btfile, delimiter=',')
-		writer = csv.writer(tFile, delimiter=',')
+def cropImagesByBestTrack(im_full_prefix, im_area_prefix, full_bt_filepath, area_bt_filepath):
+	with open(full_bt_filepath, 'rb') as full_file, open(area_bt_filepath, 'wb') as area_file:
+		reader = csv.reader(full_file, delimiter=',')
+		writer = csv.writer(area_file, delimiter=',')
 		
 		index = 0
 		for row in reader:
@@ -201,7 +195,7 @@ def prepareImages(btFile, out_file, mode):
 				hh = (int)(datetime[6:8])
 
 				for mn in [00, 10]:
-					impath = getFilePathFromTime(prefix, bt_ID, yyyy, mm, dd, hh, mn)
+					impath = getFilePathFromTime(im_full_prefix, bt_ID, yyyy, mm, dd, hh, mn)
 					if not os.path.isfile(impath):
 						continue
 
@@ -220,14 +214,12 @@ def prepareImages(btFile, out_file, mode):
 						if mn == 00:
 							writer.writerow([bt_ID, datetime, tc_type])
 						
-						cv2.imwrite(out_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn), crop_im)
+						cv2.imwrite(im_area_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn), crop_im)
 
 """ Training the classifier
 """
-def calcAMVImages(filepath):
-	in_prefix = "../../train/tc/pos/"
-	out_prefix = "../../genfiles/motion/"
-	with open(filepath, 'rb') as file:
+def calcAMVImages(im_prefix, amv_prefix, bt_filepath):	
+	with open(bt_filepath, 'rb') as file:
 		reader = csv.reader(file, delimiter=',')		
 		for line in reader:		
 			bt_ID = int(line[0])
@@ -241,33 +233,28 @@ def calcAMVImages(filepath):
 			hh = (int)(datetime[6:8])
 
 			# read image at best-track time
-			impath = getFilePathFromTime(in_prefix, bt_ID, yyyy, mm, dd, hh, 00)
+			impath = getFilePathFromTime(im_prefix, bt_ID, yyyy, mm, dd, hh, 00)
 			im = cv2.imread(impath, 0)
 
 			# read image at 10-minutes later
-			ref_im_path = getFilePathFromTime(in_prefix, bt_ID, yyyy, mm, dd, hh, 10)
+			ref_im_path = getFilePathFromTime(im_prefix, bt_ID, yyyy, mm, dd, hh, 10)
 			ref_im = cv2.imread(ref_im_path, 0)
 
 			if im.shape != ref_im.shape:
 				continue
 			
-			print "Processing:", impath
+			print "Processing:", impath, ref_im_path
 
 			# calculate the AMV
 			velX, velY = calcAMVBM(im, ref_im)
-			np.save(out_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy", velX)
-			np.save(out_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy", velY)
 
-def visualizeAMV(filepath, mode):
-	motion_prefix = "../../genfiles/motion/"
-	
-	if mode == 1:
-		im_prefix = "../../train/tc/pos/"
-	else:
-		im_prefix = "../../test/tc/pos/"
+			# save the AMV for later use
+			np.save(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy", velX)
+			np.save(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy", velY)
 
-	with open(filepath, 'rb') as file:
-		reader = csv.reader(file, delimiter=',')
+def visualizeAMV(amv_prefix, im_prefix, bt_filepath):
+	with open(bt_filepath, 'rb') as bt_file:
+		reader = csv.reader(bt_file, delimiter=',')
 		for line in reader:
 			bt_ID = int(line[0])
 			tc_type = int(line[2])
@@ -282,29 +269,26 @@ def visualizeAMV(filepath, mode):
 			print bt_ID, datetime
 
 			# load motion vector
-			velX = np.load(motion_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy")
-			velY = np.load(motion_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy")
+			velX = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy")
+			velY = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy")
 			velSize = velX.shape
 
 			# load image
 			im_c = cv2.imread(getFilePathFromTime(im_prefix, bt_ID, yyyy, mm, dd, hh, 00), 1)
-
 			for i in range(0, velSize[0]):
 				for j in range(0, velSize[1]):
 					anchorX = i * 10 + 8
 					anchorY = j * 10 + 8
 
 					cv2.circle(im_c, (anchorY, anchorX), 1, (0, 0, 255), 1)
-					cv2.line(im_c, (anchorY, anchorX), (anchorY + velY[i, j], anchorX + velX[i, j]), (0, 255, 0), 1, cv2.CV_AA)
-			cv2.imwrite(getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + ".png", im_c)
+					cv2.line(im_c, (anchorY, anchorX), (anchorY + velX[i, j], anchorX + velY[i, j]), (0, 255, 0), 1, cv2.CV_AA)
+			# cv2.imwrite(getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + ".png", im_c)
 
-def train(trainFile):
-	in_prefix = "../../genfiles/motion/"
-	
+def train(bt_filepath, amv_prefix):
 	features = []
 	labels = []
-	with open(trainFile, 'rb') as tFile:
-		reader = csv.reader(tFile, delimiter=',')
+	with open(bt_filepath, 'rb') as bt_file:
+		reader = csv.reader(bt_file, delimiter=',')
 		for line in reader:
 			bt_ID = int(line[0])
 			tc_type = int(line[2])
@@ -318,8 +302,8 @@ def train(trainFile):
 
 			print bt_ID, datetime
 
-			velX = np.load(in_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy")
-			velY = np.load(in_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy")
+			velX = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy")
+			velY = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy")
 
 			# calculate the HOG
 			descriptor = calcDescriptor(velX, velY)
@@ -330,15 +314,16 @@ def train(trainFile):
 	clf.fit(features, labels)
 	joblib.dump(clf, CLF_FILE, compress=3)
 
-def test(testFile):
-	in_prefix = "../../genfiles/motion/"
-
+def test(test_area_bt_filepath, amv_prefix):
 	# load clf
 	clf = joblib.load(CLF_FILE)
+	
+	# count the correc/not-correct predict for each TC type
 	correct = np.zeros(9)
 	not_correct = np.zeros(9)
-	with open(testFile, 'rb') as tFile:
-		reader = csv.reader(tFile, delimiter=',')
+	
+	with open(test_area_bt_filepath, 'rb') as bt_file:
+		reader = csv.reader(bt_file, delimiter=',')
 		for line in reader:
 			bt_ID = int(line[0])
 			tc_type = int(line[2])
@@ -352,8 +337,8 @@ def test(testFile):
 
 			print bt_ID, datetime
 
-			velX = np.load(in_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy")
-			velY = np.load(in_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy")
+			velX = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy")
+			velY = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy")
 
 			descriptor = calcDescriptor(velX, velY)
 			nbr = clf.predict(np.array([descriptor], 'float64'))
@@ -365,19 +350,27 @@ def test(testFile):
 	print correct, not_correct
 
 if __name__ == '__main__':
-	# prepare training images
-	btTrainFile = "../../data/tc/besttrack/train.csv"
-	trainFile = "../../train/tc/pos.csv"
+	im_full_prefix = "../../data/tc/full/"
+	im_area_prefix = "../../data/tc/area/"
 	
-	btTestFile = "../../data/tc/besttrack/test.csv"
-	testFile = "../../test/tc/pos.csv"
+	train_full_bt_filepath = "../../data/tc/besttrack/train.csv"
+	test_full_bt_filepath = "../../data/tc/besttrack/test.csv"
+	
+	train_area_bt_filepath = "../../train/tc/data.csv"
+	test_area_bt_filepath = "../../test/tc/data.csv"
 
-	# prepareImages(btTestFile, testFile, 0)
+	amv_prefix = "../../genfiles/motion/"
 
-	# calcAMVImages(trainFile)
-	visualizeAMV(testFile, 0)
+	# cropImagesByBestTrack(im_full_prefix, im_area_prefix, train_full_bt_filepath, train_area_bt_filepath)
+	# cropImagesByBestTrack(im_full_prefix, im_area_prefix, test_full_bt_filepath, test_area_bt_filepath)
 
-	# train(trainFile)
-	# test(testFile)
+	calcAMVImages(im_area_prefix, amv_prefix, train_area_bt_filepath)
+	calcAMVImages(im_area_prefix, amv_prefix, test_area_bt_filepath)
+	
+	# visualizeAMV(amv_prefix, im_area_prefix, train_area_bt_filepath)
+	# visualizeAMV(amv_prefix, im_area_prefix, test_area_bt_filepath)
+
+	# train(train_area_bt_filepath, amv_prefix)
+	# test(test_area_bt_filepath, amv_prefix)
 
 			
