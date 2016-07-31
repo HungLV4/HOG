@@ -4,8 +4,8 @@ import csv
 import numpy as np
 from numpy import linalg as LA
 
-from sklearn.externals import joblib
-from sklearn.svm import LinearSVC
+# from sklearn.externals import joblib
+# from sklearn.svm import LinearSVC
 
 import math
 import sys
@@ -258,6 +258,46 @@ def calcAMVImages(filepath):
 			np.save(out_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy", velX)
 			np.save(out_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy", velY)
 
+def visualizeAMV(filepath, mode):
+	motion_prefix = "../../genfiles/motion/"
+	
+	if mode == 1:
+		im_prefix = "../../train/tc/pos/"
+	else:
+		im_prefix = "../../test/tc/pos/"
+
+	with open(filepath, 'rb') as file:
+		reader = csv.reader(file, delimiter=',')
+		for line in reader:
+			bt_ID = int(line[0])
+			tc_type = int(line[2])
+			
+			# get the datetime of the image
+			datetime = line[1]
+			yyyy = 2000 + int(datetime[0:2])
+			mm = (int)(datetime[2:4])
+			dd = (int)(datetime[4:6])
+			hh = (int)(datetime[6:8])
+
+			print bt_ID, datetime
+
+			# load motion vector
+			velX = np.load(motion_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy")
+			velY = np.load(motion_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy")
+			velSize = velX.shape
+
+			# load image
+			im_c = cv2.imread(getFilePathFromTime(im_prefix, bt_ID, yyyy, mm, dd, hh, 00), 1)
+
+			for i in range(0, velSize[0]):
+				for j in range(0, velSize[1]):
+					anchorX = i * 10 + 8
+					anchorY = j * 10 + 8
+
+					cv2.circle(im_c, (anchorY, anchorX), 1, (0, 0, 255), 1)
+					cv2.line(im_c, (anchorY, anchorX), (anchorY + velY[i, j], anchorX + velX[i, j]), (0, 255, 0), 1, cv2.CV_AA)
+			cv2.imwrite(getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + ".png", im_c)
+
 def train(trainFile):
 	in_prefix = "../../genfiles/motion/"
 	
@@ -335,8 +375,9 @@ if __name__ == '__main__':
 	# prepareImages(btTestFile, testFile, 0)
 
 	# calcAMVImages(trainFile)
+	visualizeAMV(testFile, 0)
 
 	# train(trainFile)
-	test(testFile)
+	# test(testFile)
 
 			
