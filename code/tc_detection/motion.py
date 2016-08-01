@@ -4,12 +4,14 @@ import csv
 import numpy as np
 from numpy import linalg as LA
 
-# from sklearn.externals import joblib
-# from sklearn.svm import LinearSVC
+from sklearn.externals import joblib
+from sklearn.svm import LinearSVC
 
 import math
 import sys
 import os
+
+import shutil
 
 from p_motionEstBM import motionEstTSS
 
@@ -109,7 +111,9 @@ def calcIHO(velX, velY, num_orient, magnitude_threshold):
 		ppc: pixels per cell
 		cpb: cells per block
 """
-def calcHODescriptor(integral_hist, ppc, cpb):
+def calcHODescriptor(velX, velY, num_orient, amv_threshold, ppc, cpb):
+	integral_hist = calcIHO(velX, velY, num_orient, amv_threshold)
+
 	height, width, num_orient = integral_hist.shape
 	epsilon = 0.1
 	tau = 0.2
@@ -152,22 +156,29 @@ def calcHODescriptor(integral_hist, ppc, cpb):
 """ Calculate the descripptor
 """
 def calcDescriptor(velX, velY):
-	# calculate the integral image of HOAMV/HOG
-	num_orient = 9
-	amv_threshold = 1
-	integral_hist = calcIHO(velX, velY, num_orient, amv_threshold)
+	# crop to smaller region of 32x32
+	height, width = velX.shape
+	row_lower_bound = height / 2 - 1
+	row_upper_bound = height / 2 + 1
+	col_lower_bound = width / 2 - 1
+	col_upper_bound = width / 2 + 1
+
+	velX = velX[row_lower_bound - 15: row_upper_bound + 15, col_lower_bound - 15: col_upper_bound + 15]
+	velY = velY[row_lower_bound - 15: row_upper_bound + 15, col_lower_bound - 15: col_upper_bound + 15]
 
 	# calculate the descriptor of HOAMV
+	num_orient = 9
+	amv_threshold = 1
 	pixel_per_cell = 8
 	cell_per_block = 2
-	descriptor = calcHODescriptor(integral_hist, pixel_per_cell, cell_per_block)
+	descriptor = calcHODescriptor(velX, velY, num_orient, amv_threshold, pixel_per_cell, cell_per_block)
 
 	return descriptor
 
 """ Calculate Amotpheric Motion Vector using Block Matching algorithm
 """
 def calcAMVBM(im, ref_im):
-	velX, velY = motionEstTSS(im, ref_im, 25, 4, 10)
+	velX, velY = motionEstTSS(im, ref_im, 25, 8, 5)
 
 	return velX, velY
 
@@ -189,36 +200,41 @@ def cropImagesByBestTrack(im_full_prefix, im_area_prefix, full_bt_filepath, area
 				tc_type = line[2]
 
 				datetime = line[0]
+
 				yyyy = 2000 + int(datetime[0:2])
 				mm = (int)(datetime[2:4])
 				dd = (int)(datetime[4:6])
 				hh = (int)(datetime[6:8])
 
-				for mn in [00, 10]:
-					impath = getFilePathFromTime(im_full_prefix, bt_ID, yyyy, mm, dd, hh, mn)
-					if not os.path.isfile(impath):
-						continue
+				impath = getFilePathFromTime(im_full_prefix, bt_ID, yyyy, mm, dd, hh, 00)
+				ref_impath = getFilePathFromTime(im_full_prefix, bt_ID, yyyy, mm, dd, hh, 10)
+				
+				if not (os.path.isfile(impath) and os.path.isfile(ref_impath)):
+					continue
 
-					im = cv2.imread(impath, 0)
-					height, width = im.shape
+				im = cv2.imread(impath, 0)
+				ref_im = cv2.imread(ref_impath, 0)
 
-					bt_lat = int(line[3]) * 0.1
-					bt_lon = int(line[4]) * 0.1
+				height, width = im.shape
 
-					row, col = latlon2xy(bt_lat, bt_lon)
+				bt_lat = int(line[3]) * 0.1
+				bt_lon = int(line[4]) * 0.1
 
-					w = 167
-					if row - w > 0 and row + w + 1 < height and col - 1 > 0 and col + w + 1 < width:
-						crop_im = im[row - w : row + w + 1, col - w : col + w + 1]
-						
-						if mn == 00:
-							writer.writerow([bt_ID, datetime, tc_type])
-						
-						cv2.imwrite(im_area_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn), crop_im)
+				row, col = latlon2xy(bt_lat, bt_lon)
+
+				w = 172
+				if row - w > 0 and row + w + 1 < height and col - 1 > 0 and col + w + 1 < width:
+					crop_im = im[row - w : row + w + 1, col - w : col + w + 1]
+					crop_ref = ref_im[row - w : row + w + 1, col - w : col + w + 1]
+					
+					cv2.imwrite(getFilePathFromTime(im_area_prefix, bt_ID, yyyy, mm, dd, hh, 00), crop_im)
+					cv2.imwrite(getFilePathFromTime(im_area_prefix, bt_ID, yyyy, mm, dd, hh, 10), crop_ref)
+
+					writer.writerow([bt_ID, datetime, tc_type])
 
 """ Training the classifier
 """
-def calcAMVImages(im_prefix, amv_prefix, bt_filepath):	
+def calcAMVImages(im_prefix, amv_prefix, bt_filepath):
 	with open(bt_filepath, 'rb') as file:
 		reader = csv.reader(file, delimiter=',')		
 		for line in reader:		
@@ -240,10 +256,10 @@ def calcAMVImages(im_prefix, amv_prefix, bt_filepath):
 			ref_im_path = getFilePathFromTime(im_prefix, bt_ID, yyyy, mm, dd, hh, 10)
 			ref_im = cv2.imread(ref_im_path, 0)
 
+			print "Processing:", impath, ref_im_path
+			
 			if im.shape != ref_im.shape:
 				continue
-			
-			print "Processing:", impath, ref_im_path
 
 			# calculate the AMV
 			velX, velY = calcAMVBM(im, ref_im)
@@ -252,7 +268,7 @@ def calcAMVImages(im_prefix, amv_prefix, bt_filepath):
 			np.save(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy", velX)
 			np.save(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy", velY)
 
-def visualizeAMV(amv_prefix, im_prefix, bt_filepath):
+def visualizeAMV(amv_prefix, amv_vis_prefix, im_prefix, bt_filepath):
 	with open(bt_filepath, 'rb') as bt_file:
 		reader = csv.reader(bt_file, delimiter=',')
 		for line in reader:
@@ -272,17 +288,18 @@ def visualizeAMV(amv_prefix, im_prefix, bt_filepath):
 			velX = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy")
 			velY = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy")
 			velSize = velX.shape
+			print velSize
 
 			# load image
 			im_c = cv2.imread(getFilePathFromTime(im_prefix, bt_ID, yyyy, mm, dd, hh, 00), 1)
 			for i in range(0, velSize[0]):
 				for j in range(0, velSize[1]):
-					anchorX = i * 10 + 8
-					anchorY = j * 10 + 8
+					anchorX = i * 5 + 12
+					anchorY = j * 5 + 12
 
 					cv2.circle(im_c, (anchorY, anchorX), 1, (0, 0, 255), 1)
-					cv2.line(im_c, (anchorY, anchorX), (anchorY + velX[i, j], anchorX + velY[i, j]), (0, 255, 0), 1, cv2.CV_AA)
-			# cv2.imwrite(getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + ".png", im_c)
+					cv2.line(im_c, (anchorY, anchorX), (anchorY + velY[i, j], anchorX + velX[i, j]), (0, 255, 0), 1, cv2.CV_AA)
+			cv2.imwrite(getFilePathFromTime(amv_vis_prefix, bt_ID, yyyy, mm, dd, hh, 00), im_c)
 
 def train(bt_filepath, amv_prefix):
 	features = []
@@ -292,6 +309,10 @@ def train(bt_filepath, amv_prefix):
 		for line in reader:
 			bt_ID = int(line[0])
 			tc_type = int(line[2])
+			# if tc_type == 5:
+			# 	tc_type = 1
+			# else:
+			# 	tc_type = -1
 			
 			# get the datetime of the image
 			datetime = line[1]
@@ -299,8 +320,6 @@ def train(bt_filepath, amv_prefix):
 			mm = (int)(datetime[2:4])
 			dd = (int)(datetime[4:6])
 			hh = (int)(datetime[6:8])
-
-			print bt_ID, datetime
 
 			velX = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy")
 			velY = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy")
@@ -327,6 +346,10 @@ def test(test_area_bt_filepath, amv_prefix):
 		for line in reader:
 			bt_ID = int(line[0])
 			tc_type = int(line[2])
+			# if tc_type == 5:
+			# 	tc_type = 1
+			# else:
+			# 	tc_type = -1
 			
 			# get the datetime of the image
 			datetime = line[1]
@@ -335,18 +358,16 @@ def test(test_area_bt_filepath, amv_prefix):
 			dd = (int)(datetime[4:6])
 			hh = (int)(datetime[6:8])
 
-			print bt_ID, datetime
-
 			velX = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy")
 			velY = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy")
 
 			descriptor = calcDescriptor(velX, velY)
-			nbr = clf.predict(np.array([descriptor], 'float64'))
+			nbr = clf.predict(np.array([descriptor]))
 
 			if tc_type == int(nbr[0]):
-				correct[tc_type - 1] += 1
+				correct[tc_type] += 1
 			else:
-				not_correct[tc_type - 1] += 1
+				not_correct[tc_type] += 1
 	print correct, not_correct
 
 if __name__ == '__main__':
@@ -359,18 +380,19 @@ if __name__ == '__main__':
 	train_area_bt_filepath = "../../train/tc/data.csv"
 	test_area_bt_filepath = "../../test/tc/data.csv"
 
-	amv_prefix = "../../genfiles/motion/"
+	amv_prefix = "../../genfiles/amv/"
+	amv_vis_prefix = "../../genfiles/amv_visualization/"
 
-	cropImagesByBestTrack(im_full_prefix, im_area_prefix, train_full_bt_filepath, train_area_bt_filepath)
-	cropImagesByBestTrack(im_full_prefix, im_area_prefix, test_full_bt_filepath, test_area_bt_filepath)
+	# cropImagesByBestTrack(im_full_prefix, im_area_prefix, train_full_bt_filepath, train_area_bt_filepath)
+	# cropImagesByBestTrack(im_full_prefix, im_area_prefix, test_full_bt_filepath, test_area_bt_filepath)
 
 	# calcAMVImages(im_area_prefix, amv_prefix, train_area_bt_filepath)
 	# calcAMVImages(im_area_prefix, amv_prefix, test_area_bt_filepath)
 	
-	# visualizeAMV(amv_prefix, im_area_prefix, train_area_bt_filepath)
-	# visualizeAMV(amv_prefix, im_area_prefix, test_area_bt_filepath)
+	# visualizeAMV(amv_prefix, amv_vis_prefix, im_area_prefix, train_area_bt_filepath)
+	# visualizeAMV(amv_prefix, amv_vis_prefix, im_area_prefix, test_area_bt_filepath)
 
-	# train(train_area_bt_filepath, amv_prefix)
-	# test(test_area_bt_filepath, amv_prefix)
+	train(train_area_bt_filepath, amv_prefix)
+	test(test_area_bt_filepath, amv_prefix)
 
 			
