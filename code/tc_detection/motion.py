@@ -13,6 +13,8 @@ import os
 
 import shutil
 
+from pandas import DataFrame
+
 from p_motionEstBM import motionEstTSS
 
 CLF_FILE = "../../genfiles/tc_clf.pkl"
@@ -40,13 +42,29 @@ def l2_normalization(x):
 			x[i] = x[i] / l2_norm
 	return x
 
-""" Calculate the Histogram of Orientation
+""" Calculate the Histogram of Wind Speed
+"""
+def calcHWS(velX, velY, num_bin):
+	height, width = velX.shape
+
+	# calculate absolute magnitude of the AMV/Gradient
+	magnitude = np.sqrt(velX ** 2 + velY ** 2)
+
+	hist = np.zeros(num_bin + 1)
+	for y in range(height):
+		for x in range(width):
+			b = int(magnitude[y, x]) if int(magnitude[y, x]) < num_bin else num_bin
+
+			hist[b] += 1
+	return hist
+
+""" Calculate the Histogram of Wind Direction
 	The angle is positive number in range of [0, 180]
 	Params:
 		num_orient: number of bins
 		magnitude_threshold: minimum motion/gradient magnitude to contribute to histogram
 """
-def calcHO(velX, velY, num_orient, magnitude_threshold):
+def caclcHWD(velX, velY, num_orient, amv_threshold):
 	height, width = velX.shape
 
 	# calculate absolute magnitude of the AMV/Gradient
@@ -59,7 +77,7 @@ def calcHO(velX, velY, num_orient, magnitude_threshold):
 	bin_w = 180 / num_orient
 	for y in range(height):
 		for x in range(width):
-			if magnitude[y, x] >= magnitude_threshold:
+			if magnitude[y, x] >= amv_threshold:
 				angle = (180 / np.pi) * (np.arctan2(velY[y, x], velX[y, x]) % np.pi)
 
 				# calc orientation using bilinear interpolation
@@ -90,7 +108,7 @@ def calcHO(velX, velY, num_orient, magnitude_threshold):
 """ Calculate integral image of Histogram of Oriented "Amotpheric Motion Vector"/Gradient
 """
 def calcIHO(velX, velY, num_orient, magnitude_threshold):
-	hist = calcHO(velX, velY, num_orient, magnitude_threshold)
+	hist = caclcHWD(velX, velY, num_orient, magnitude_threshold)
 	
 	height, width, _ = hist.shape
 
@@ -105,6 +123,29 @@ def calcIHO(velX, velY, num_orient, magnitude_threshold):
 											hist[y - 1, x - 1, ang]
 
 	return integral_hist
+
+""" Calculate the descriptor of Shen-Shyang Ho paper
+	*Automated cyclone identification from remote QuickSCAT satellite data
+"""
+def calcSSHDescriptor(velX, velY, num_orient, amv_threshold):
+	hist_wd = caclcHWD(velX, velY, num_orient, amv_threshold)
+	wd_des = np.sum(hist_wd, (0, 1))
+
+	ws_des = calcHWS(velX, velY, 22)
+
+	return  np.concatenate([wd_des, ws_des])
+
+""" Calculate the descriptor of Circulate Histogram of Oriented AMV/Gradient
+"""
+def calcCHODescriptor(velX, velY, num_orient, amv_threshold, radius):
+	hist = caclcHWD(velX, velY, num_orient, amv_threshold)
+
+	height, width = velX.shape
+	
+	row_lower_bound = height / 2 - 1
+	row_upper_bound = height / 2 + 1
+	col_lower_bound = width / 2 - 1
+	col_upper_bound = width / 2 + 1
 
 """ Calculate the descriptor of HOG/HOAMV
 	Params:
@@ -157,21 +198,24 @@ def calcHODescriptor(velX, velY, num_orient, amv_threshold, ppc, cpb):
 """
 def calcDescriptor(velX, velY):
 	# crop to smaller region of 32x32
-	height, width = velX.shape
-	row_lower_bound = height / 2 - 1
-	row_upper_bound = height / 2 + 1
-	col_lower_bound = width / 2 - 1
-	col_upper_bound = width / 2 + 1
+	# height, width = velX.shape
+	# row_lower_bound = height / 2 - 1
+	# row_upper_bound = height / 2 + 1
+	# col_lower_bound = width / 2 - 1
+	# col_upper_bound = width / 2 + 1
 
-	velX = velX[row_lower_bound - 15: row_upper_bound + 15, col_lower_bound - 15: col_upper_bound + 15]
-	velY = velY[row_lower_bound - 15: row_upper_bound + 15, col_lower_bound - 15: col_upper_bound + 15]
+	# velX = velX[row_lower_bound - 15: row_upper_bound + 15, col_lower_bound - 15: col_upper_bound + 15]
+	# velY = velY[row_lower_bound - 15: row_upper_bound + 15, col_lower_bound - 15: col_upper_bound + 15]
 
 	# calculate the descriptor of HOAMV
 	num_orient = 9
 	amv_threshold = 1
-	pixel_per_cell = 8
-	cell_per_block = 2
-	descriptor = calcHODescriptor(velX, velY, num_orient, amv_threshold, pixel_per_cell, cell_per_block)
+	
+	# pixel_per_cell = 8
+	# cell_per_block = 2
+	# descriptor = calcHODescriptor(velX, velY, num_orient, amv_threshold, pixel_per_cell, cell_per_block)
+	
+	descriptor = calcSSHDescriptor(velX, velY, num_orient, amv_threshold)
 
 	return descriptor
 
@@ -308,7 +352,7 @@ def train(bt_filepath, amv_prefix):
 		reader = csv.reader(bt_file, delimiter=',')
 		for line in reader:
 			bt_ID = int(line[0])
-			tc_type = int(line[2])
+			tc_type = int(line[2]) - 1
 			
 			# get the datetime of the image
 			datetime = line[1]
@@ -334,14 +378,12 @@ def test(test_area_bt_filepath, amv_prefix):
 	clf = joblib.load(CLF_FILE)
 	
 	# count the correc/not-correct predict for each TC type
-	correct = np.zeros(9)
-	not_correct = np.zeros(9)
-	
+	confusion = np.zeros((9, 9))
 	with open(test_area_bt_filepath, 'rb') as bt_file:
 		reader = csv.reader(bt_file, delimiter=',')
 		for line in reader:
 			bt_ID = int(line[0])
-			tc_type = int(line[2])
+			tc_type = int(line[2]) - 1
 			
 			# get the datetime of the image
 			datetime = line[1]
@@ -356,11 +398,10 @@ def test(test_area_bt_filepath, amv_prefix):
 			descriptor = calcDescriptor(velX, velY)
 			nbr = clf.predict(np.array([descriptor]))
 
-			if tc_type == int(nbr[0]):
-				correct[tc_type] += 1
-			else:
-				not_correct[tc_type] += 1
-	print correct, not_correct
+			confusion[tc_type, int(nbr[0])] += 1
+	
+	# pretty-print confusion matrix
+	print DataFrame(confusion)
 
 if __name__ == '__main__':
 	im_full_prefix = "../../data/tc/full/"
