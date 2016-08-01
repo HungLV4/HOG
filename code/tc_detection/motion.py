@@ -309,10 +309,6 @@ def train(bt_filepath, amv_prefix):
 		for line in reader:
 			bt_ID = int(line[0])
 			tc_type = int(line[2])
-			# if tc_type == 5:
-			# 	tc_type = 1
-			# else:
-			# 	tc_type = -1
 			
 			# get the datetime of the image
 			datetime = line[1]
@@ -346,10 +342,6 @@ def test(test_area_bt_filepath, amv_prefix):
 		for line in reader:
 			bt_ID = int(line[0])
 			tc_type = int(line[2])
-			# if tc_type == 5:
-			# 	tc_type = 1
-			# else:
-			# 	tc_type = -1
 			
 			# get the datetime of the image
 			datetime = line[1]
