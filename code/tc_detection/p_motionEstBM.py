@@ -32,9 +32,10 @@ def estTSS(curI, nextI, velX, velY, i, j, block_r, stepSize, shiftSize, height, 
 		# calculate cost at same position and initiate as minCost
 		refMb = nextI[newOrigX - block_r : newOrigX + block_r, 
 					newOrigY - block_r: newOrigY + block_r]
-		
 		minCost = evalMAD(origMb, refMb)
-
+		minX = 0
+		minY = 0
+		
 		for x in xrange(-1,2,1):
 			for y in xrange(-1,2,1):
 				if x == 0 and y == 0:
@@ -45,18 +46,19 @@ def estTSS(curI, nextI, velX, velY, i, j, block_r, stepSize, shiftSize, height, 
 				refY = y * _stepSize + newOrigY
 				if refX < block_r or refY < block_r or refX + block_r >= height or refY + block_r >= width:
 					continue
-				
+
 				# get the ref block
 				refMb = nextI[refX - block_r: refX + block_r, refY - block_r: refY + block_r]
 				
 				# calculate cost at new position
 				cost = evalMAD(origMb, refMb)
-										
 				if cost < minCost:
 					minCost = cost
-					newOrigX = refX
-					newOrigY = refY
+					minX = x
+					minY = y
 		
+		newOrigX = minX * _stepSize + newOrigX
+		newOrigY = minY * _stepSize + newOrigY
 		_stepSize = _stepSize / 2
 	
 	velX[i, j] = newOrigX - (i * shiftSize + block_r)

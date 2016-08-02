@@ -54,7 +54,6 @@ def calcHWS(velX, velY, num_bin):
 	for y in range(height):
 		for x in range(width):
 			b = int(magnitude[y, x]) if int(magnitude[y, x]) < num_bin else num_bin
-
 			hist[b] += 1
 	return hist
 
@@ -105,6 +104,25 @@ def caclcHWD(velX, velY, num_orient, amv_threshold):
 
 	return hist
 
+def calcDSR(velX, velY, amv_threshold):
+	height, width = velX.shape
+
+	dsr = np.zeros((height, width))
+
+	# calculate absolute magnitude of the AMV/Gradient
+	magnitude = np.sqrt(velX ** 2 + velY ** 2)
+	for y in range(height):
+		for x in range(width):
+			if magnitude[y, x] >= amv_threshold:
+				angle = (180 / np.pi) * (np.arctan2(velY[y, x], velX[y, x]) % np.pi)
+				dsr[y, x] = angle / magnitude[y, x]
+	# calculate the histogram
+	# binwidth = 10
+	# hist, bin_edges = np.histogram(data, bins=np.arange(1, np.max(data) + 2 * binwidth, binwidth))
+	# print dsr.min(), dsr.max()
+	
+	# return hist
+
 """ Calculate integral image of Histogram of Oriented "Amotpheric Motion Vector"/Gradient
 """
 def calcIHO(velX, velY, num_orient, magnitude_threshold):
@@ -131,9 +149,12 @@ def calcSSHDescriptor(velX, velY, num_orient, amv_threshold):
 	hist_wd = caclcHWD(velX, velY, num_orient, amv_threshold)
 	wd_des = np.sum(hist_wd, (0, 1))
 
-	ws_des = calcHWS(velX, velY, 22)
+	ws_des = calcHWS(velX, velY, 20)
 
-	return  np.concatenate([wd_des, ws_des])
+	dsr_des = calcDSR(velX, velY, 1)
+
+	# return np.concatenate([wd_des, ws_des])
+	return wd_des
 
 """ Calculate the descriptor of Circulate Histogram of Oriented AMV/Gradient
 """
@@ -222,7 +243,7 @@ def calcDescriptor(velX, velY):
 """ Calculate Amotpheric Motion Vector using Block Matching algorithm
 """
 def calcAMVBM(im, ref_im):
-	velX, velY = motionEstTSS(im, ref_im, 25, 8, 5)
+	velX, velY = motionEstTSS(im, ref_im, 9, 8, 5)
 
 	return velX, velY
 
@@ -332,7 +353,8 @@ def visualizeAMV(amv_prefix, amv_vis_prefix, im_prefix, bt_filepath):
 			velX = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy")
 			velY = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy")
 			velSize = velX.shape
-			print velSize
+			
+			print velX.max(), velY.max()
 
 			# load image
 			im_c = cv2.imread(getFilePathFromTime(im_prefix, bt_ID, yyyy, mm, dd, hh, 00), 1)
@@ -419,13 +441,34 @@ if __name__ == '__main__':
 	# cropImagesByBestTrack(im_full_prefix, im_area_prefix, train_full_bt_filepath, train_area_bt_filepath)
 	# cropImagesByBestTrack(im_full_prefix, im_area_prefix, test_full_bt_filepath, test_area_bt_filepath)
 
-	# calcAMVImages(im_area_prefix, amv_prefix, train_area_bt_filepath)
-	# calcAMVImages(im_area_prefix, amv_prefix, test_area_bt_filepath)
+	calcAMVImages(im_area_prefix, amv_prefix, train_area_bt_filepath)
+	calcAMVImages(im_area_prefix, amv_prefix, test_area_bt_filepath)
 	
 	# visualizeAMV(amv_prefix, amv_vis_prefix, im_area_prefix, train_area_bt_filepath)
 	# visualizeAMV(amv_prefix, amv_vis_prefix, im_area_prefix, test_area_bt_filepath)
 
-	train(train_area_bt_filepath, amv_prefix)
-	test(test_area_bt_filepath, amv_prefix)
+	# train(train_area_bt_filepath, amv_prefix)
+	# test(test_area_bt_filepath, amv_prefix)
+
+
+	# -------------------------------------------------------------------
+	# impath = "1.png"
+	# ref_im_path = "2.png"
+	
+	# im_c = cv2.imread(impath, 0)
+	# ref_im = cv2.imread(ref_im_path, 0)
+	
+	# velX, velY = calcAMVBM(im_c, ref_im)
+	# velSize = velX.shape
+	
+	# # load image
+	# for i in range(0, velSize[0]):
+	# 	for j in range(0, velSize[1]):
+	# 		anchorX = i * 5 + 4
+	# 		anchorY = j * 5 + 4
+
+	# 		cv2.circle(im_c, (anchorY, anchorX), 1, (0, 0, 255), 1)
+	# 		cv2.line(im_c, (anchorY, anchorX), (anchorY + velX[i, j], anchorX + velY[i, j]), (0, 255, 0), 1, cv2.CV_AA)
+	# cv2.imwrite("visualization.png", im_c)
 
 			
