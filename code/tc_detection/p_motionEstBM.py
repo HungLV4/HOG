@@ -1,13 +1,12 @@
-import tempfile
 import os
 
 import numpy as np
 
+import multiprocessing
 from joblib import Parallel, delayed
 from joblib import load, dump
-
-import multiprocessing
 import shutil
+import tempfile
 
 """ Computes the Mean Absolute Difference (MAD)
 """
