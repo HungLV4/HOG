@@ -15,8 +15,8 @@ import shutil
 
 from pandas import DataFrame
 
-from p_motionEstBM import motionEstTSS
-from descriptor import *
+from motionEstBM import motionEstTSS
+from hog import calcHOGDescriptor
 from utilities import *
 
 im_full_prefix = "../../data/tc/full/"
@@ -35,34 +35,20 @@ gradient_prefix = "../../genfiles/gradient/"
 
 CLF_FILE = "../../genfiles/tc_clf.pkl"
 
-""" Calculate the descripptor
-"""
 def calcDescriptor(velX, velY):
-	# crop to smaller region of 32x32
-	# height, width = velX.shape
-	# row_lower_bound = height / 2 - 1
-	# row_upper_bound = height / 2 + 1
-	# col_lower_bound = width / 2 - 1
-	# col_upper_bound = width / 2 + 1
+	""" Calculate the descripptor
+	"""
 
-	# velX = velX[row_lower_bound - 15: row_upper_bound + 15, col_lower_bound - 15: col_upper_bound + 15]
-	# velY = velY[row_lower_bound - 15: row_upper_bound + 15, col_lower_bound - 15: col_upper_bound + 15]
+	# calculate the descriptor of HOG/HOAMV
+	descriptor = calcHOGDescriptor(velX, velY, orientations=9, pixels_per_cell=(8, 8), cells_per_block=(2, 2))
 
-	# calculate the descriptor of HOAMV
-	num_orient = 9
-	magnitude_threshold = 0.001
-
-	pixel_per_cell = 16
-	cell_per_block = 2
-	descriptor = calcHODescriptor(velX, velY, num_orient, magnitude_threshold, pixel_per_cell, cell_per_block)
-	
 	# descriptor = calcSSHDescriptor(velX, velY, num_orient, amv_threshold)
 
 	return descriptor
 
-""" Calculate the Amospheric Motion Vector
-"""
 def calcAMVImages(bt_filepath):
+	""" Calculate the Amospheric Motion Vector
+	"""
 	with open(bt_filepath, 'rb') as file:
 		reader = csv.reader(file, delimiter=',')		
 		for line in reader:		
@@ -96,14 +82,13 @@ def calcAMVImages(bt_filepath):
 			np.save(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy", velX)
 			np.save(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy", velY)
 
-""" Calculate the Gradient
-"""
 def calcGradientImages(bt_filepath):
+	""" Calculate the Gradient
+	"""
 	with open(bt_filepath, 'rb') as file:
 		reader = csv.reader(file, delimiter=',')		
 		for line in reader:		
 			bt_ID = int(line[0])
-			tc_type = int(line[2])
 			
 			# get the datetime of the image
 			datetime = line[1]
@@ -115,20 +100,30 @@ def calcGradientImages(bt_filepath):
 			# read image at best-track time
 			impath = getFilePathFromTime(im_area_prefix, bt_ID, yyyy, mm, dd, hh, 00)
 			im = cv2.imread(impath, 0)
+			im = im.astype('float')
 
 			print "Processing:", impath
 			
 			# calculate the gradient
-			gx = cv2.Sobel(im, cv2.CV_64F, 1, 0, ksize=3)
-			gy = cv2.Sobel(im, cv2.CV_64F, 0, 1, ksize=3)
+			# gx = cv2.Sobel(im, cv2.CV_64F, 1, 0, ksize=3)
+			# gy = cv2.Sobel(im, cv2.CV_64F, 0, 1, ksize=3)
+			gx = np.empty(im.shape, dtype=np.double)
+			gx[:, 0] = 0
+			gx[:, -1] = 0
+			gx[:, 1:-1] = im[:, 2:] - im[:, :-2]
+
+			gy = np.empty(im.shape, dtype=np.double)
+			gy[0, :] = 0
+			gy[-1, :] = 0
+			gy[1:-1, :] = im[2:, :] - im[:-2, :]
 
 			# save the AMV for later use
 			np.save(gradient_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy", gx)
 			np.save(gradient_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy", gy)
 
-""" Visualize the AMV
-"""
 def visualizeAMV(bt_filepath):
+	""" Visualize the AMV
+	"""
 	with open(bt_filepath, 'rb') as bt_file:
 		reader = csv.reader(bt_file, delimiter=',')
 		for line in reader:
@@ -160,9 +155,9 @@ def visualizeAMV(bt_filepath):
 					cv2.line(im_c, (anchorY, anchorX), (anchorY + velY[i, j], anchorX + velX[i, j]), (0, 255, 0), 1, cv2.CV_AA)
 			cv2.imwrite(getFilePathFromTime(amv_vis_prefix, bt_ID, yyyy, mm, dd, hh, 00), im_c)
 
-""" Training the classifier
-"""
 def train():
+	""" Training the classifier
+	"""
 	features = []
 	labels = []
 	with open(train_area_bt_filepath, 'rb') as bt_file:
@@ -181,18 +176,13 @@ def train():
 			hh = (int)(datetime[6:8])
 
 			# calculate the Histogram descriptor using AMV
-			# velX = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy")
-			# velY = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy")
-			# descriptor = calcDescriptor(velX, velY)
+			velX = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy")
+			velY = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy")
+			descriptor = calcDescriptor(velX, velY)
 
 			# calculate the HOG descriptpor using Scikit lib
 			# im = cv2.imread(getFilePathFromTime(im_area_prefix, bt_ID, yyyy, mm, dd, hh, 00), 0)
 			# descriptor = hog(im, orientations=9, pixels_per_cell=(8, 8), cells_per_block=(2, 2), visualise=False)
-
-			# calculate the HOG descriptpor
-			gx = np.load(gradient_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy")
-			gy = np.load(gradient_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy")
-			descriptor = calcDescriptor(gx, gy)
 			
 			features.append(descriptor)
 
@@ -220,18 +210,13 @@ def test():
 			hh = (int)(datetime[6:8])
 
 			# calculate the Histogram descriptor using AMV
-			# velX = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy")
-			# velY = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy")
-			# descriptor = calcDescriptor(velX, velY)
+			velX = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy")
+			velY = np.load(amv_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy")
+			descriptor = calcDescriptor(velX, velY)
 
 			# calculate the HOG descriptpor using Scikit lib
 			# im = cv2.imread(getFilePathFromTime(im_area_prefix, bt_ID, yyyy, mm, dd, hh, 00), 0)
 			# descriptor = hog(im, orientations=9, pixels_per_cell=(8, 8), cells_per_block=(2, 2), visualise=False)
-
-			# calculate the HOG descriptpor
-			gx = np.load(gradient_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_X.npy")
-			gy = np.load(gradient_prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, 00) + "_Y.npy")
-			descriptor = calcDescriptor(gx, gy)
 
 			nbr = clf.predict(np.array([descriptor]))
 			confusion[tc_type, int(nbr[0])] += 1
@@ -251,7 +236,7 @@ if __name__ == '__main__':
 	# calcGradientImages(train_area_bt_filepath)
 	# calcGradientImages(test_area_bt_filepath)
 
-	# train()
-	# test()
+	train()
+	test()
 
 			

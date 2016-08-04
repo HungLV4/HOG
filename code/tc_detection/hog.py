@@ -1,39 +1,26 @@
 import numpy as np
-from histogram import *
-from numpy import linalg as LA
+from hoghistogram import *
 
-""" L2-Normalization for a list
-	Params:
-		x: list of value
-"""
-def l2_normalization(x):
-	l2_norm  = LA.norm(x)
-	if l2_norm > 0:
-		for i in range(len(x)):
-			x[i] = x[i] / l2_norm
-	return x
-
-""" Calculate the descriptor of Circulate Histogram of Oriented AMV/Gradient
-"""
-def calcCHOGDescriptor(velX, velY, num_orient, threshold, radius):
+def calcCHOGDescriptor(gx, gy, num_orient, threshold, radius):
+	""" Calculate the descriptor of Circulate Histogram of Oriented AMV/Gradient
+	"""
 	pass
 
-def calcHOGDescriptor(velX, velY, orientations, ppc, cpb):
+def calcHOGDescriptor(gx, gy, orientations, pixels_per_cell, cells_per_block):
 	""" Calculate the descriptor of Histogram of Oriented AMV/Gradient
 		Params:
 			velX, velY: (M, N) ndarray
 				Input AMV/Gradients image of x-axis and y-axis resp
 			num_orient: int
 				Number of orientation bins.
-			ppc: (int, int)
+			pixels_per_cell: (int, int)
 				Pixels per cell
-			cpb: (int, int)
+			cells_per_block: (int, int)
 				Cells per block
 	"""
-
-	sy, sx = velX.shape
-	cx, cy = ppc
-	bx, by = cpb
+	sy, sx = gx.shape
+	cx, cy = pixels_per_cell
+	bx, by = cells_per_block
 
 	"""
     The first stage aims to produce an encoding that is sensitive to
@@ -49,12 +36,16 @@ def calcHOGDescriptor(velX, velY, orientations, ppc, cpb):
     predetermined bins. The gradient magnitudes of the pixels in the
     cell are used to vote into the orientation histogram.
     """
+    
+    # number of cells in x
+	n_cellsx = int(np.floor(sx // cx))
 
-	n_cellsx = int(np.floor(sx // cx))  # number of cells in x
-    n_cellsy = int(np.floor(sy // cy))  # number of cells in y
+    # number of cells in y 
+	n_cellsy = int(np.floor(sy // cy))
 
-	# compute the orientation integral images
-	integral_hist = calcIHO(velX, velY, num_orient, amv_threshold)
+    # compute the orientation integral images
+	orientation_histogram = hog_histograms(gx, gy, cx, cy, sx, sy, n_cellsx, n_cellsy,
+                                orientations)
 
 	"""
     The second stage computes normalisation, which takes local groups of
@@ -72,21 +63,21 @@ def calcHOGDescriptor(velX, velY, orientations, ppc, cpb):
     """
 
 	n_blocksx = (n_cellsx - bx) + 1
-    n_blocksy = (n_cellsy - by) + 1
-    normalised_blocks = np.zeros((n_blocksy, n_blocksx, by, bx, orientations))
+	n_blocksy = (n_cellsy - by) + 1
+	normalised_blocks = np.zeros((n_blocksy, n_blocksx, by, bx, orientations))
 
-    for x in range(n_blocksx):
-        for y in range(n_blocksy):
-            block = integral_hist[y: y + by, x: x + bx, :]
-            eps = 1e-5
-            normalised_blocks[y, x, :] = block / np.sqrt(block.sum() ** 2 + eps)
+	for x in range(n_blocksx):
+		for y in range(n_blocksy):
+			block = orientation_histogram[y: y + by, x: x + bx, :]
+			eps = 1e-5
+			normalised_blocks[y, x, :] = block / np.sqrt(block.sum() ** 2 + eps)
 
-    """
+	"""
     The final step collects the HOG descriptors from all blocks of a dense
     overlapping grid of blocks covering the detection window into a combined
     feature vector for use in the window classifier.
     """
 
-    normalised_blocks = normalised_blocks.ravel()
+	normalised_blocks = normalised_blocks.ravel()
 
 	return normalised_blocks
