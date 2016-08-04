@@ -5,7 +5,8 @@ import os
 def getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn):
 	return "{:0>4d}_{:0>4d}{:0>2d}{:0>2d}{:0>2d}{:0>2d}.tir.01.fld".format(bt_ID, yyyy, mm, dd, hh, mn)
 
-def getFilePathFromTime(prefix, bt_ID, yyyy, mm, dd, hh, mn):
+def getFilePathFromTime(prefix, tc_type, bt_ID, yyyy, mm, dd, hh, mn):
+	# return prefix + "%d/" % tc_type + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn) + ".png"
 	return prefix + getFileNameFromTime(bt_ID, yyyy, mm, dd, hh, mn) + ".png"
 
 def latlon2xy(lat, lon):
@@ -54,12 +55,12 @@ def cropImagesByBestTrack(im_full_prefix, im_area_prefix, full_bt_filepath, area
 
 				row, col = latlon2xy(bt_lat, bt_lon)
 
-				w = 64
+				w = 256
 				if row - w > 0 and row + w + 1 < height and col - 1 > 0 and col + w + 1 < width:
 					crop_im = im[row - w : row + w , col - w : col + w]
 					crop_ref = ref_im[row - w : row + w, col - w : col + w]
 					
-					cv2.imwrite(getFilePathFromTime(im_area_prefix + "%d/" % tc_type, bt_ID, yyyy, mm, dd, hh, 00), crop_im)
-					cv2.imwrite(getFilePathFromTime(im_area_prefix + "%d/" % tc_type, bt_ID, yyyy, mm, dd, hh, 10), crop_ref)
+					cv2.imwrite(getFilePathFromTime(im_area_prefix, tc_type, bt_ID, yyyy, mm, dd, hh, 00), crop_im)
+					cv2.imwrite(getFilePathFromTime(im_area_prefix, tc_type, bt_ID, yyyy, mm, dd, hh, 10), crop_ref)
 
 					writer.writerow([bt_ID, datetime, tc_type])

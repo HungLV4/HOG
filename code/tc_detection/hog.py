@@ -1,5 +1,5 @@
 import numpy as np
-from hoghistogram import *
+from _hoghistogram import hog_histograms
 
 def calcCHOGDescriptor(gx, gy, num_orient, threshold, radius):
 	""" Calculate the descriptor of Circulate Histogram of Oriented AMV/Gradient
@@ -43,9 +43,9 @@ def calcHOGDescriptor(gx, gy, orientations, pixels_per_cell, cells_per_block):
     # number of cells in y 
 	n_cellsy = int(np.floor(sy // cy))
 
-    # compute the orientation integral images
-	orientation_histogram = hog_histograms(gx, gy, cx, cy, sx, sy, n_cellsx, n_cellsy,
-                                orientations)
+	orientation_histogram = np.zeros((n_cellsy, n_cellsx, orientations))
+	hog_histograms(gx, gy, cx, cy, sx, sy, n_cellsx, n_cellsy, orientations, orientation_histogram)
+	
 
 	"""
     The second stage computes normalisation, which takes local groups of
@@ -64,6 +64,7 @@ def calcHOGDescriptor(gx, gy, orientations, pixels_per_cell, cells_per_block):
 
 	n_blocksx = (n_cellsx - bx) + 1
 	n_blocksy = (n_cellsy - by) + 1
+
 	normalised_blocks = np.zeros((n_blocksy, n_blocksx, by, bx, orientations))
 
 	for x in range(n_blocksx):
