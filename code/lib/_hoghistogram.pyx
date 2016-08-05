@@ -14,40 +14,40 @@ cdef float cell_hog(double[:, ::1] magnitude,
                     int range_rows_start, int range_rows_stop,
                     int range_columns_start, int range_columns_stop) nogil:
     """Calculation of the cell's HOG value
-    Parameters
-    ----------
-    magnitude : ndarray
-        The gradient magnitudes of the pixels.
-    orientation : ndarray
-        Lookup table for orientations.
-    orientation_start : float
-        Orientation range start.
-    orientation_end : float
-        Orientation range end.
-    cell_columns : int
-        Pixels per cell (rows).
-    cell_rows : int
-        Pixels per cell (columns).
-    column_index : int
-        Block column index.
-    row_index : int
-        Block row index.
-    size_columns : int
-        Number of columns.
-    size_rows : int
-        Number of rows.
-    range_rows_start : int
-        Start row of cell.
-    range_rows_stop : int
-        Stop row of cell.
-    range_columns_start : int
-        Start column of cell.
-    range_columns_stop : int
-        Stop column of cell
-    Returns
-    -------
-    total : float
-        The total HOG value.
+        Parameters
+        ----------
+        magnitude : ndarray
+            The gradient magnitudes of the pixels.
+        orientation : ndarray
+            Lookup table for orientations.
+        orientation_start : float
+            Orientation range start.
+        orientation_end : float
+            Orientation range end.
+        cell_columns : int
+            Pixels per cell (rows).
+        cell_rows : int
+            Pixels per cell (columns).
+        column_index : int
+            Block column index.
+        row_index : int
+            Block row index.
+        size_columns : int
+            Number of columns.
+        size_rows : int
+            Number of rows.
+        range_rows_start : int
+            Start row of cell.
+        range_rows_stop : int
+            Stop row of cell.
+        range_columns_start : int
+            Start column of cell.
+        range_columns_stop : int
+            Stop column of cell
+        Returns
+        -------
+        total : float
+            The total HOG value.
     """
     cdef int cell_column, cell_row, cell_row_index, cell_column_index
     cdef float total = 0.
@@ -78,28 +78,28 @@ def hog_histograms(double[:, ::1] gradient_columns,
                    int number_of_orientations,
                    cnp.float64_t[:, :, :] orientation_histogram):
     """Extract Histogram of Oriented Gradients (HOG) for a given image.
-    Parameters
-    ----------
-    gradient_columns : ndarray
-        First order image gradients (rows).
-    gradient_rows : ndarray
-        First order image gradients (columns).
-    cell_columns : int
-        Pixels per cell (rows).
-    cell_rows : int
-        Pixels per cell (columns).
-    size_columns : int
-        Number of columns.
-    size_rows : int
-        Number of rows.
-    number_of_cells_columns : int
-        Number of cells (rows).
-    number_of_cells_rows : int
-        Number of cells (columns).
-    number_of_orientations : int
-        Number of orientation bins.
-    orientation_histogram : ndarray
-        The histogram array which is modified in place.
+        Parameters
+        ----------
+        gradient_columns : ndarray
+            First order image gradients (rows).
+        gradient_rows : ndarray
+            First order image gradients (columns).
+        cell_columns : int
+            Pixels per cell (rows).
+        cell_rows : int
+            Pixels per cell (columns).
+        size_columns : int
+            Number of columns.
+        size_rows : int
+            Number of rows.
+        number_of_cells_columns : int
+            Number of cells (rows).
+        number_of_cells_rows : int
+            Number of cells (columns).
+        number_of_orientations : int
+            Number of orientation bins.
+        orientation_histogram : ndarray
+            The histogram array which is modified in place.
     """
 
     cdef double[:, ::1] magnitude = np.hypot(gradient_columns,

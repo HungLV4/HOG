@@ -63,17 +63,17 @@ def estTSS(curI, nextI, velX, velY, i, j, block_r, stepSize, shiftSize, height, 
 	velX[i, j] = newOrigX - (i * shiftSize + block_r)
 	velY[i, j] = newOrigY - (j * shiftSize + block_r)
 	
-""" Computes motion vectors using 3-step search method
-Input:
-	curI: The image for which we want to find motion vectors
-	nextI: The reference image
-	blockSize:
- 	stepSize:
-	shiftSize:
-Ouput:
-    velX, velY : the motion vectors for each direction
-"""
 def motionEstTSS(curI, nextI, blockSize, stepSize, shiftSize):
+	""" Computes motion vectors using 3-step search method
+		Input:
+			curI: The image for which we want to find motion vectors
+			nextI: The reference image
+			blockSize:
+		 	stepSize:
+			shiftSize:
+		Ouput:
+		    velX, velY : the motion vectors for each direction
+	"""
 	# check if two images have the same size
 	if nextI.shape != curI.shape:
 		print "Two images do not have the same size"
@@ -95,8 +95,9 @@ def motionEstTSS(curI, nextI, blockSize, stepSize, shiftSize):
 	# get the number of system cores
 	num_cores = multiprocessing.cpu_count()
 
-	# Pre-allocate a writeable shared memory map as a container for the results
-	# motion vectors of the parallel computation
+	"""Pre-allocate a writeable shared memory map as a container for the results
+	motion vectors of the parallel computation
+	"""
 	velX = np.memmap(velX_path, dtype=np.int32, shape=velSize, mode='w+')
 	velY = np.memmap(velY_path, dtype=np.int32, shape=velSize, mode='w+')
 
@@ -104,10 +105,11 @@ def motionEstTSS(curI, nextI, blockSize, stepSize, shiftSize):
 	dump(curI, curI_path)
 	dump(nextI, nextI_path)
 
-	# Release the reference on the original in memory array and replace it
-	# by a reference to the memmap array so that the garbage collector can
-	# release the memory before forking. gc.collect() is internally called
-	# in Parallel just before forking.
+	"""Release the reference on the original in memory array and replace it
+	by a reference to the memmap array so that the garbage collector can
+	release the memory before forking. gc.collect() is internally called
+	in Parallel just before forking.
+	"""
 	curI = load(curI_path, mmap_mode='r')
 	nextI = load(nextI_path, mmap_mode='r')
 
@@ -121,16 +123,18 @@ def motionEstTSS(curI, nextI, blockSize, stepSize, shiftSize):
 
 	return velX, velY
 
-""" Computes motion vectors using 3-step search method
-Input:
-	curI: The image for which we want to find motion vectors
-	nextI: The reference image
-	blockSize:
-	stepSize:
-Ouput:
-    velX, velY : the motion vectors for each direction
-"""
+
 def motionEstARPS(curI, nextI, blockSize, stepSize):
+	""" Computes motion vectors using 3-step search method
+	Input:
+		curI: The image for which we want to find motion vectors
+		nextI: The reference image
+		blockSize:
+		stepSize:
+	Ouput:
+	    velX, velY : the motion vectors for each direction
+	"""
+	
 	# check if two images have the same size
 	if nextI.shape != curI.shape:
 		print "Two images do not have the same size"
