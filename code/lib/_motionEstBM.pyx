@@ -19,7 +19,7 @@ cdef float evalMAD(cnp.uint8_t[:, ::1] im,
 	cost = 0.0
 	for i in range(start_row_index, stop_row_index):
 		for j in range(start_column_index, stop_column_index):
-			if im[i, j] > next_im[i, j]:
+			if im[i, j] > next_im[i + offset_row, j + offset_column]:
 				cost += im[i, j] - next_im[i + offset_row, j + offset_column]
 			else:
 				cost += next_im[i + offset_row, j + offset_column] - im[i, j]
@@ -29,7 +29,7 @@ cdef float evalMAD(cnp.uint8_t[:, ::1] im,
 cdef int estTSS(cnp.uint8_t[:, ::1] im, 
 			cnp.uint8_t[:, ::1] next_im, 
 			int column_index, int row_index, 
-			int cell_columns, int cell_rows, int stepSize, 
+			int ppc_column, int ppc_row, int stepSize, 
 			int size_columns, int size_rows) nogil:
 
 	cdef int vy, vx, newX, newY, x, y, \
@@ -42,10 +42,10 @@ cdef int estTSS(cnp.uint8_t[:, ::1] im,
 	
 	cdef float cost, minCost
 
-	start_column_index = column_index * cell_columns
-	stop_column_index = (column_index + 1) * cell_columns
-	start_row_index = row_index * cell_rows
-	stop_row_index = (row_index + 1) * cell_rows
+	start_column_index = column_index * ppc_column
+	stop_column_index = (column_index + 1) * ppc_column
+	start_row_index = row_index * ppc_row
+	stop_row_index = (row_index + 1) * ppc_row
 
 	offset_column = 0
 	offset_row = 0
@@ -54,10 +54,9 @@ cdef int estTSS(cnp.uint8_t[:, ::1] im,
 		start_column_index, stop_column_index, 
 		start_row_index, stop_row_index,
 		offset_column, offset_row,
-		cell_columns, cell_rows)
+		ppc_column, ppc_row)
 
-	_stepSize = stepSize
-	while _stepSize >= 1:
+	while stepSize >= 1:
 		min_offset_column = 0
 		min_offset_row = 0
 		for x in range(-1, 2):
@@ -78,7 +77,7 @@ cdef int estTSS(cnp.uint8_t[:, ::1] im,
 					start_column_index, stop_column_index,
 					start_row_index, stop_row_index,
 					offset_column + _offset_column, offset_row + _offset_row,
-					cell_columns, cell_rows)
+					ppc_column, ppc_row)
 
 				if cost < minCost:
 					minCost = cost
@@ -87,7 +86,8 @@ cdef int estTSS(cnp.uint8_t[:, ::1] im,
 
 		offset_column += min_offset_column
 		offset_row += min_offset_row
-		_stepSize = _stepSize / 2
+		
+		stepSize = stepSize / 2
 
 	return offset_row * 10 + offset_column
 
@@ -95,14 +95,14 @@ def motionEstTSS( cnp.uint8_t[:, ::1] im,
 				cnp.uint8_t[:, ::1] next_im,
 				int size_columns, int size_rows,
 				int cell_columns, int cell_rows, int stepSize,
-				int number_of_cells_columns, int number_of_cells_rows,
-				cnp.uint8_t[:, ::1] vx,
-				cnp.uint8_t[:, ::1] vy):
+				int ppc_column, int ppc_row,
+				cnp.int_t[:, ::1] vx,
+				cnp.int_t[:, ::1] vy):
 	cdef int i, j
 	cdef int v
 	with nogil:
-		for i in range(number_of_cells_rows):
-			for j in range(number_of_cells_columns):
-				v = estTSS(im, next_im, j, i, cell_columns, cell_rows, stepSize, number_of_cells_columns, number_of_cells_rows)
+		for i in range(cell_rows):
+			for j in range(cell_columns):
+				v = estTSS(im, next_im, j, i, ppc_column, ppc_row, stepSize, size_columns, size_rows)
 				vy[i, j] = v / 10
 				vx[i, j] = v % 10

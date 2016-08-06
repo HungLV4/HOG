@@ -1447,15 +1447,11 @@ static int __Pyx_ValidateAndInit_memviewslice(
 /* ObjectToMemviewSlice.proto */
 static CYTHON_INLINE __Pyx_memviewslice __Pyx_PyObject_to_MemoryviewSlice_d_dc_nn___pyx_t_5numpy_uint8_t(PyObject *);
 
+/* ObjectToMemviewSlice.proto */
+static CYTHON_INLINE __Pyx_memviewslice __Pyx_PyObject_to_MemoryviewSlice_d_dc_nn___pyx_t_5numpy_int_t(PyObject *);
+
 /* CIntToPy.proto */
 static CYTHON_INLINE PyObject* __Pyx_PyInt_From_int(int value);
-
-/* Print.proto */
-static int __Pyx_Print(PyObject*, PyObject *, int);
-#if CYTHON_COMPILING_IN_PYPY || PY_MAJOR_VERSION >= 3
-static PyObject* __pyx_print = 0;
-static PyObject* __pyx_print_kwargs = 0;
-#endif
 
 /* None.proto */
 #if CYTHON_CCOMPLEX
@@ -1690,6 +1686,7 @@ static void __pyx_memoryview_refcount_objects_in_slice(char *, Py_ssize_t *, Py_
 static void __pyx_memoryview_slice_assign_scalar(__Pyx_memviewslice *, int, size_t, void *, int); /*proto*/
 static void __pyx_memoryview__slice_assign_scalar(char *, Py_ssize_t *, Py_ssize_t *, int, size_t, void *); /*proto*/
 static __Pyx_TypeInfo __Pyx_TypeInfo_nn___pyx_t_5numpy_uint8_t = { "uint8_t", NULL, sizeof(__pyx_t_5numpy_uint8_t), { 0 }, 0, IS_UNSIGNED(__pyx_t_5numpy_uint8_t) ? 'U' : 'I', IS_UNSIGNED(__pyx_t_5numpy_uint8_t), 0 };
+static __Pyx_TypeInfo __Pyx_TypeInfo_nn___pyx_t_5numpy_int_t = { "int_t", NULL, sizeof(__pyx_t_5numpy_int_t), { 0 }, 0, IS_UNSIGNED(__pyx_t_5numpy_int_t) ? 'U' : 'I', IS_UNSIGNED(__pyx_t_5numpy_int_t), 0 };
 #define __Pyx_MODULE_NAME "code.lib._motionEstBM"
 int __pyx_module_is_main_code__lib___motionEstBM = 0;
 
@@ -1713,10 +1710,8 @@ static const char __pyx_k_im[] = "im";
 static const char __pyx_k_np[] = "np";
 static const char __pyx_k_vx[] = "vx";
 static const char __pyx_k_vy[] = "vy";
-static const char __pyx_k_end[] = "end";
 static const char __pyx_k_obj[] = "obj";
 static const char __pyx_k_base[] = "base";
-static const char __pyx_k_file[] = "file";
 static const char __pyx_k_main[] = "__main__";
 static const char __pyx_k_mode[] = "mode";
 static const char __pyx_k_name[] = "name";
@@ -1731,7 +1726,6 @@ static const char __pyx_k_class[] = "__class__";
 static const char __pyx_k_error[] = "error";
 static const char __pyx_k_flags[] = "flags";
 static const char __pyx_k_numpy[] = "numpy";
-static const char __pyx_k_print[] = "print";
 static const char __pyx_k_range[] = "range";
 static const char __pyx_k_shape[] = "shape";
 static const char __pyx_k_start[] = "start";
@@ -1744,6 +1738,7 @@ static const char __pyx_k_unpack[] = "unpack";
 static const char __pyx_k_fortran[] = "fortran";
 static const char __pyx_k_memview[] = "memview";
 static const char __pyx_k_next_im[] = "next_im";
+static const char __pyx_k_ppc_row[] = "ppc_row";
 static const char __pyx_k_Ellipsis[] = "Ellipsis";
 static const char __pyx_k_itemsize[] = "itemsize";
 static const char __pyx_k_stepSize[] = "stepSize";
@@ -1753,6 +1748,7 @@ static const char __pyx_k_enumerate[] = "enumerate";
 static const char __pyx_k_size_rows[] = "size_rows";
 static const char __pyx_k_IndexError[] = "IndexError";
 static const char __pyx_k_ValueError[] = "ValueError";
+static const char __pyx_k_ppc_column[] = "ppc_column";
 static const char __pyx_k_pyx_vtable[] = "__pyx_vtable__";
 static const char __pyx_k_MemoryError[] = "MemoryError";
 static const char __pyx_k_RuntimeError[] = "RuntimeError";
@@ -1763,14 +1759,12 @@ static const char __pyx_k_pyx_getbuffer[] = "__pyx_getbuffer";
 static const char __pyx_k_allocate_buffer[] = "allocate_buffer";
 static const char __pyx_k_dtype_is_object[] = "dtype_is_object";
 static const char __pyx_k_strided_and_direct[] = "<strided and direct>";
-static const char __pyx_k_number_of_cells_rows[] = "number_of_cells_rows";
 static const char __pyx_k_strided_and_indirect[] = "<strided and indirect>";
 static const char __pyx_k_code_lib__motionEstBM[] = "code.lib._motionEstBM";
 static const char __pyx_k_contiguous_and_direct[] = "<contiguous and direct>";
 static const char __pyx_k_MemoryView_of_r_object[] = "<MemoryView of %r object>";
 static const char __pyx_k_MemoryView_of_r_at_0x_x[] = "<MemoryView of %r at 0x%x>";
 static const char __pyx_k_contiguous_and_indirect[] = "<contiguous and indirect>";
-static const char __pyx_k_number_of_cells_columns[] = "number_of_cells_columns";
 static const char __pyx_k_Cannot_index_with_type_s[] = "Cannot index with type '%s'";
 static const char __pyx_k_Invalid_shape_in_axis_d_d[] = "Invalid shape in axis %d: %d.";
 static const char __pyx_k_itemsize_0_for_cython_array[] = "itemsize <= 0 for cython.array";
@@ -1827,10 +1821,8 @@ static PyObject *__pyx_kp_s_contiguous_and_direct;
 static PyObject *__pyx_kp_s_contiguous_and_indirect;
 static PyObject *__pyx_n_s_dtype_is_object;
 static PyObject *__pyx_n_s_encode;
-static PyObject *__pyx_n_s_end;
 static PyObject *__pyx_n_s_enumerate;
 static PyObject *__pyx_n_s_error;
-static PyObject *__pyx_n_s_file;
 static PyObject *__pyx_n_s_flags;
 static PyObject *__pyx_n_s_format;
 static PyObject *__pyx_n_s_fortran;
@@ -1854,12 +1846,11 @@ static PyObject *__pyx_kp_u_ndarray_is_not_Fortran_contiguou;
 static PyObject *__pyx_n_s_ndim;
 static PyObject *__pyx_n_s_next_im;
 static PyObject *__pyx_n_s_np;
-static PyObject *__pyx_n_s_number_of_cells_columns;
-static PyObject *__pyx_n_s_number_of_cells_rows;
 static PyObject *__pyx_n_s_numpy;
 static PyObject *__pyx_n_s_obj;
 static PyObject *__pyx_n_s_pack;
-static PyObject *__pyx_n_s_print;
+static PyObject *__pyx_n_s_ppc_column;
+static PyObject *__pyx_n_s_ppc_row;
 static PyObject *__pyx_n_s_pyx_getbuffer;
 static PyObject *__pyx_n_s_pyx_vtable;
 static PyObject *__pyx_n_s_range;
@@ -1883,7 +1874,7 @@ static PyObject *__pyx_n_s_unpack;
 static PyObject *__pyx_n_s_v;
 static PyObject *__pyx_n_s_vx;
 static PyObject *__pyx_n_s_vy;
-static PyObject *__pyx_pf_4code_3lib_12_motionEstBM_motionEstTSS(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_im, __Pyx_memviewslice __pyx_v_next_im, CYTHON_UNUSED int __pyx_v_size_columns, CYTHON_UNUSED int __pyx_v_size_rows, int __pyx_v_cell_columns, int __pyx_v_cell_rows, int __pyx_v_stepSize, int __pyx_v_number_of_cells_columns, int __pyx_v_number_of_cells_rows, __Pyx_memviewslice __pyx_v_vx, __Pyx_memviewslice __pyx_v_vy); /* proto */
+static PyObject *__pyx_pf_4code_3lib_12_motionEstBM_motionEstTSS(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_im, __Pyx_memviewslice __pyx_v_next_im, int __pyx_v_size_columns, int __pyx_v_size_rows, int __pyx_v_cell_columns, int __pyx_v_cell_rows, int __pyx_v_stepSize, int __pyx_v_ppc_column, int __pyx_v_ppc_row, __Pyx_memviewslice __pyx_v_vx, __Pyx_memviewslice __pyx_v_vy); /* proto */
 static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, Py_buffer *__pyx_v_info, int __pyx_v_flags); /* proto */
 static void __pyx_pf_5numpy_7ndarray_2__releasebuffer__(PyArrayObject *__pyx_v_self, Py_buffer *__pyx_v_info); /* proto */
 static int __pyx_array___pyx_pf_15View_dot_MemoryView_5array___cinit__(struct __pyx_array_obj *__pyx_v_self, PyObject *__pyx_v_shape, Py_ssize_t __pyx_v_itemsize, PyObject *__pyx_v_format, PyObject *__pyx_v_mode, int __pyx_v_allocate_buffer); /* proto */
@@ -1965,7 +1956,6 @@ static float __pyx_f_4code_3lib_12_motionEstBM_evalMAD(__Pyx_memviewslice __pyx_
   int __pyx_v_j;
   float __pyx_v_cost;
   float __pyx_r;
-  __Pyx_RefNannyDeclarations
   int __pyx_t_1;
   int __pyx_t_2;
   int __pyx_t_3;
@@ -1983,7 +1973,6 @@ static float __pyx_f_4code_3lib_12_motionEstBM_evalMAD(__Pyx_memviewslice __pyx_
   Py_ssize_t __pyx_t_15;
   Py_ssize_t __pyx_t_16;
   Py_ssize_t __pyx_t_17;
-  __Pyx_RefNannySetupContext("evalMAD", 0);
 
   /* "code/lib/_motionEstBM.pyx":19
  * 	cdef float cost
@@ -1999,7 +1988,7 @@ static float __pyx_f_4code_3lib_12_motionEstBM_evalMAD(__Pyx_memviewslice __pyx_
  * 	cost = 0.0
  * 	for i in range(start_row_index, stop_row_index):             # <<<<<<<<<<<<<<
  * 		for j in range(start_column_index, stop_column_index):
- * 			if im[i, j] > next_im[i, j]:
+ * 			if im[i, j] > next_im[i + offset_row, j + offset_column]:
  */
   __pyx_t_1 = __pyx_v_stop_row_index;
   for (__pyx_t_2 = __pyx_v_start_row_index; __pyx_t_2 < __pyx_t_1; __pyx_t_2+=1) {
@@ -2009,7 +1998,7 @@ static float __pyx_f_4code_3lib_12_motionEstBM_evalMAD(__Pyx_memviewslice __pyx_
  * 	cost = 0.0
  * 	for i in range(start_row_index, stop_row_index):
  * 		for j in range(start_column_index, stop_column_index):             # <<<<<<<<<<<<<<
- * 			if im[i, j] > next_im[i, j]:
+ * 			if im[i, j] > next_im[i + offset_row, j + offset_column]:
  * 				cost += im[i, j] - next_im[i + offset_row, j + offset_column]
  */
     __pyx_t_3 = __pyx_v_stop_column_index;
@@ -2019,20 +2008,20 @@ static float __pyx_f_4code_3lib_12_motionEstBM_evalMAD(__Pyx_memviewslice __pyx_
       /* "code/lib/_motionEstBM.pyx":22
  * 	for i in range(start_row_index, stop_row_index):
  * 		for j in range(start_column_index, stop_column_index):
- * 			if im[i, j] > next_im[i, j]:             # <<<<<<<<<<<<<<
+ * 			if im[i, j] > next_im[i + offset_row, j + offset_column]:             # <<<<<<<<<<<<<<
  * 				cost += im[i, j] - next_im[i + offset_row, j + offset_column]
  * 			else:
  */
       __pyx_t_5 = __pyx_v_i;
       __pyx_t_6 = __pyx_v_j;
-      __pyx_t_7 = __pyx_v_i;
-      __pyx_t_8 = __pyx_v_j;
+      __pyx_t_7 = (__pyx_v_i + __pyx_v_offset_row);
+      __pyx_t_8 = (__pyx_v_j + __pyx_v_offset_column);
       __pyx_t_9 = (((*((__pyx_t_5numpy_uint8_t *) ( /* dim=1 */ ((char *) (((__pyx_t_5numpy_uint8_t *) ( /* dim=0 */ (__pyx_v_im.data + __pyx_t_5 * __pyx_v_im.strides[0]) )) + __pyx_t_6)) ))) > (*((__pyx_t_5numpy_uint8_t *) ( /* dim=1 */ ((char *) (((__pyx_t_5numpy_uint8_t *) ( /* dim=0 */ (__pyx_v_next_im.data + __pyx_t_7 * __pyx_v_next_im.strides[0]) )) + __pyx_t_8)) )))) != 0);
       if (__pyx_t_9) {
 
         /* "code/lib/_motionEstBM.pyx":23
  * 		for j in range(start_column_index, stop_column_index):
- * 			if im[i, j] > next_im[i, j]:
+ * 			if im[i, j] > next_im[i + offset_row, j + offset_column]:
  * 				cost += im[i, j] - next_im[i + offset_row, j + offset_column]             # <<<<<<<<<<<<<<
  * 			else:
  * 				cost += next_im[i + offset_row, j + offset_column] - im[i, j]
@@ -2046,7 +2035,7 @@ static float __pyx_f_4code_3lib_12_motionEstBM_evalMAD(__Pyx_memviewslice __pyx_
         /* "code/lib/_motionEstBM.pyx":22
  * 	for i in range(start_row_index, stop_row_index):
  * 		for j in range(start_column_index, stop_column_index):
- * 			if im[i, j] > next_im[i, j]:             # <<<<<<<<<<<<<<
+ * 			if im[i, j] > next_im[i + offset_row, j + offset_column]:             # <<<<<<<<<<<<<<
  * 				cost += im[i, j] - next_im[i + offset_row, j + offset_column]
  * 			else:
  */
@@ -2091,7 +2080,6 @@ static float __pyx_f_4code_3lib_12_motionEstBM_evalMAD(__Pyx_memviewslice __pyx_
 
   /* function exit code */
   __pyx_L0:;
-  __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
@@ -2103,7 +2091,7 @@ static float __pyx_f_4code_3lib_12_motionEstBM_evalMAD(__Pyx_memviewslice __pyx_
  * 			int column_index, int row_index,
  */
 
-static int __pyx_f_4code_3lib_12_motionEstBM_estTSS(__Pyx_memviewslice __pyx_v_im, __Pyx_memviewslice __pyx_v_next_im, int __pyx_v_column_index, int __pyx_v_row_index, int __pyx_v_cell_columns, int __pyx_v_cell_rows, int __pyx_v_stepSize, int __pyx_v_size_columns, int __pyx_v_size_rows) {
+static int __pyx_f_4code_3lib_12_motionEstBM_estTSS(__Pyx_memviewslice __pyx_v_im, __Pyx_memviewslice __pyx_v_next_im, int __pyx_v_column_index, int __pyx_v_row_index, int __pyx_v_ppc_column, int __pyx_v_ppc_row, int __pyx_v_stepSize, int __pyx_v_size_columns, int __pyx_v_size_rows) {
   int __pyx_v_x;
   int __pyx_v_y;
   int __pyx_v_start_column_index;
@@ -2116,55 +2104,52 @@ static int __pyx_f_4code_3lib_12_motionEstBM_estTSS(__Pyx_memviewslice __pyx_v_i
   int __pyx_v__offset_row;
   int __pyx_v_min_offset_column;
   int __pyx_v_min_offset_row;
-  int __pyx_v__stepSize;
   float __pyx_v_cost;
   float __pyx_v_minCost;
   int __pyx_r;
-  __Pyx_RefNannyDeclarations
   int __pyx_t_1;
   int __pyx_t_2;
   int __pyx_t_3;
   int __pyx_t_4;
-  __Pyx_RefNannySetupContext("estTSS", 0);
 
   /* "code/lib/_motionEstBM.pyx":45
  * 	cdef float cost, minCost
  * 
- * 	start_column_index = column_index * cell_columns             # <<<<<<<<<<<<<<
- * 	stop_column_index = (column_index + 1) * cell_columns
- * 	start_row_index = row_index * cell_rows
+ * 	start_column_index = column_index * ppc_column             # <<<<<<<<<<<<<<
+ * 	stop_column_index = (column_index + 1) * ppc_column
+ * 	start_row_index = row_index * ppc_row
  */
-  __pyx_v_start_column_index = (__pyx_v_column_index * __pyx_v_cell_columns);
+  __pyx_v_start_column_index = (__pyx_v_column_index * __pyx_v_ppc_column);
 
   /* "code/lib/_motionEstBM.pyx":46
  * 
- * 	start_column_index = column_index * cell_columns
- * 	stop_column_index = (column_index + 1) * cell_columns             # <<<<<<<<<<<<<<
- * 	start_row_index = row_index * cell_rows
- * 	stop_row_index = (row_index + 1) * cell_rows
+ * 	start_column_index = column_index * ppc_column
+ * 	stop_column_index = (column_index + 1) * ppc_column             # <<<<<<<<<<<<<<
+ * 	start_row_index = row_index * ppc_row
+ * 	stop_row_index = (row_index + 1) * ppc_row
  */
-  __pyx_v_stop_column_index = ((__pyx_v_column_index + 1) * __pyx_v_cell_columns);
+  __pyx_v_stop_column_index = ((__pyx_v_column_index + 1) * __pyx_v_ppc_column);
 
   /* "code/lib/_motionEstBM.pyx":47
- * 	start_column_index = column_index * cell_columns
- * 	stop_column_index = (column_index + 1) * cell_columns
- * 	start_row_index = row_index * cell_rows             # <<<<<<<<<<<<<<
- * 	stop_row_index = (row_index + 1) * cell_rows
+ * 	start_column_index = column_index * ppc_column
+ * 	stop_column_index = (column_index + 1) * ppc_column
+ * 	start_row_index = row_index * ppc_row             # <<<<<<<<<<<<<<
+ * 	stop_row_index = (row_index + 1) * ppc_row
  * 
  */
-  __pyx_v_start_row_index = (__pyx_v_row_index * __pyx_v_cell_rows);
+  __pyx_v_start_row_index = (__pyx_v_row_index * __pyx_v_ppc_row);
 
   /* "code/lib/_motionEstBM.pyx":48
- * 	stop_column_index = (column_index + 1) * cell_columns
- * 	start_row_index = row_index * cell_rows
- * 	stop_row_index = (row_index + 1) * cell_rows             # <<<<<<<<<<<<<<
+ * 	stop_column_index = (column_index + 1) * ppc_column
+ * 	start_row_index = row_index * ppc_row
+ * 	stop_row_index = (row_index + 1) * ppc_row             # <<<<<<<<<<<<<<
  * 
  * 	offset_column = 0
  */
-  __pyx_v_stop_row_index = ((__pyx_v_row_index + 1) * __pyx_v_cell_rows);
+  __pyx_v_stop_row_index = ((__pyx_v_row_index + 1) * __pyx_v_ppc_row);
 
   /* "code/lib/_motionEstBM.pyx":50
- * 	stop_row_index = (row_index + 1) * cell_rows
+ * 	stop_row_index = (row_index + 1) * ppc_row
  * 
  * 	offset_column = 0             # <<<<<<<<<<<<<<
  * 	offset_row = 0
@@ -2188,39 +2173,30 @@ static int __pyx_f_4code_3lib_12_motionEstBM_estTSS(__Pyx_memviewslice __pyx_v_i
  * 		start_column_index, stop_column_index,
  * 		start_row_index, stop_row_index,
  */
-  __pyx_v_minCost = __pyx_f_4code_3lib_12_motionEstBM_evalMAD(__pyx_v_im, __pyx_v_next_im, __pyx_v_start_column_index, __pyx_v_stop_column_index, __pyx_v_start_row_index, __pyx_v_stop_row_index, __pyx_v_offset_column, __pyx_v_offset_row, __pyx_v_cell_columns, __pyx_v_cell_rows);
+  __pyx_v_minCost = __pyx_f_4code_3lib_12_motionEstBM_evalMAD(__pyx_v_im, __pyx_v_next_im, __pyx_v_start_column_index, __pyx_v_stop_column_index, __pyx_v_start_row_index, __pyx_v_stop_row_index, __pyx_v_offset_column, __pyx_v_offset_row, __pyx_v_ppc_column, __pyx_v_ppc_row);
 
   /* "code/lib/_motionEstBM.pyx":59
- * 		cell_columns, cell_rows)
+ * 		ppc_column, ppc_row)
  * 
- * 	_stepSize = stepSize             # <<<<<<<<<<<<<<
- * 	while _stepSize >= 1:
- * 		min_offset_column = 0
- */
-  __pyx_v__stepSize = __pyx_v_stepSize;
-
-  /* "code/lib/_motionEstBM.pyx":60
- * 
- * 	_stepSize = stepSize
- * 	while _stepSize >= 1:             # <<<<<<<<<<<<<<
+ * 	while stepSize >= 1:             # <<<<<<<<<<<<<<
  * 		min_offset_column = 0
  * 		min_offset_row = 0
  */
   while (1) {
-    __pyx_t_1 = ((__pyx_v__stepSize >= 1) != 0);
+    __pyx_t_1 = ((__pyx_v_stepSize >= 1) != 0);
     if (!__pyx_t_1) break;
 
-    /* "code/lib/_motionEstBM.pyx":61
- * 	_stepSize = stepSize
- * 	while _stepSize >= 1:
+    /* "code/lib/_motionEstBM.pyx":60
+ * 
+ * 	while stepSize >= 1:
  * 		min_offset_column = 0             # <<<<<<<<<<<<<<
  * 		min_offset_row = 0
  * 		for x in range(-1, 2):
  */
     __pyx_v_min_offset_column = 0;
 
-    /* "code/lib/_motionEstBM.pyx":62
- * 	while _stepSize >= 1:
+    /* "code/lib/_motionEstBM.pyx":61
+ * 	while stepSize >= 1:
  * 		min_offset_column = 0
  * 		min_offset_row = 0             # <<<<<<<<<<<<<<
  * 		for x in range(-1, 2):
@@ -2228,64 +2204,28 @@ static int __pyx_f_4code_3lib_12_motionEstBM_estTSS(__Pyx_memviewslice __pyx_v_i
  */
     __pyx_v_min_offset_row = 0;
 
-    /* "code/lib/_motionEstBM.pyx":63
+    /* "code/lib/_motionEstBM.pyx":62
  * 		min_offset_column = 0
  * 		min_offset_row = 0
  * 		for x in range(-1, 2):             # <<<<<<<<<<<<<<
  * 			for y in range(-1, 2):
- * 				if x == 0 and y == 0:
+ * 				# if x == 0 and y == 0:
  */
     for (__pyx_t_2 = -1L; __pyx_t_2 < 2; __pyx_t_2+=1) {
       __pyx_v_x = __pyx_t_2;
 
-      /* "code/lib/_motionEstBM.pyx":64
+      /* "code/lib/_motionEstBM.pyx":63
  * 		min_offset_row = 0
  * 		for x in range(-1, 2):
  * 			for y in range(-1, 2):             # <<<<<<<<<<<<<<
- * 				if x == 0 and y == 0:
- * 					continue
+ * 				# if x == 0 and y == 0:
+ * 				# 	continue
  */
       for (__pyx_t_3 = -1L; __pyx_t_3 < 2; __pyx_t_3+=1) {
         __pyx_v_y = __pyx_t_3;
 
-        /* "code/lib/_motionEstBM.pyx":65
- * 		for x in range(-1, 2):
- * 			for y in range(-1, 2):
- * 				if x == 0 and y == 0:             # <<<<<<<<<<<<<<
- * 					continue
- * 
- */
-        __pyx_t_4 = ((__pyx_v_x == 0) != 0);
-        if (__pyx_t_4) {
-        } else {
-          __pyx_t_1 = __pyx_t_4;
-          goto __pyx_L10_bool_binop_done;
-        }
-        __pyx_t_4 = ((__pyx_v_y == 0) != 0);
-        __pyx_t_1 = __pyx_t_4;
-        __pyx_L10_bool_binop_done:;
-        if (__pyx_t_1) {
-
-          /* "code/lib/_motionEstBM.pyx":66
- * 			for y in range(-1, 2):
- * 				if x == 0 and y == 0:
- * 					continue             # <<<<<<<<<<<<<<
- * 
- * 				_offset_column = y * stepSize
- */
-          goto __pyx_L7_continue;
-
-          /* "code/lib/_motionEstBM.pyx":65
- * 		for x in range(-1, 2):
- * 			for y in range(-1, 2):
- * 				if x == 0 and y == 0:             # <<<<<<<<<<<<<<
- * 					continue
- * 
- */
-        }
-
-        /* "code/lib/_motionEstBM.pyx":68
- * 					continue
+        /* "code/lib/_motionEstBM.pyx":67
+ * 				# 	continue
  * 
  * 				_offset_column = y * stepSize             # <<<<<<<<<<<<<<
  * 				_offset_row = x * stepSize
@@ -2293,7 +2233,7 @@ static int __pyx_f_4code_3lib_12_motionEstBM_estTSS(__Pyx_memviewslice __pyx_v_i
  */
         __pyx_v__offset_column = (__pyx_v_y * __pyx_v_stepSize);
 
-        /* "code/lib/_motionEstBM.pyx":69
+        /* "code/lib/_motionEstBM.pyx":68
  * 
  * 				_offset_column = y * stepSize
  * 				_offset_row = x * stepSize             # <<<<<<<<<<<<<<
@@ -2302,7 +2242,7 @@ static int __pyx_f_4code_3lib_12_motionEstBM_estTSS(__Pyx_memviewslice __pyx_v_i
  */
         __pyx_v__offset_row = (__pyx_v_x * __pyx_v_stepSize);
 
-        /* "code/lib/_motionEstBM.pyx":71
+        /* "code/lib/_motionEstBM.pyx":70
  * 				_offset_row = x * stepSize
  * 
  * 				if start_column_index + offset_column + _offset_column < 0 or \             # <<<<<<<<<<<<<<
@@ -2313,10 +2253,10 @@ static int __pyx_f_4code_3lib_12_motionEstBM_estTSS(__Pyx_memviewslice __pyx_v_i
         if (!__pyx_t_4) {
         } else {
           __pyx_t_1 = __pyx_t_4;
-          goto __pyx_L13_bool_binop_done;
+          goto __pyx_L10_bool_binop_done;
         }
 
-        /* "code/lib/_motionEstBM.pyx":72
+        /* "code/lib/_motionEstBM.pyx":71
  * 
  * 				if start_column_index + offset_column + _offset_column < 0 or \
  * 					stop_column_index + offset_column + _offset_column >= size_columns or \             # <<<<<<<<<<<<<<
@@ -2327,10 +2267,10 @@ static int __pyx_f_4code_3lib_12_motionEstBM_estTSS(__Pyx_memviewslice __pyx_v_i
         if (!__pyx_t_4) {
         } else {
           __pyx_t_1 = __pyx_t_4;
-          goto __pyx_L13_bool_binop_done;
+          goto __pyx_L10_bool_binop_done;
         }
 
-        /* "code/lib/_motionEstBM.pyx":73
+        /* "code/lib/_motionEstBM.pyx":72
  * 				if start_column_index + offset_column + _offset_column < 0 or \
  * 					stop_column_index + offset_column + _offset_column >= size_columns or \
  * 					start_row_index + offset_row + _offset_row < 0 or \             # <<<<<<<<<<<<<<
@@ -2341,10 +2281,10 @@ static int __pyx_f_4code_3lib_12_motionEstBM_estTSS(__Pyx_memviewslice __pyx_v_i
         if (!__pyx_t_4) {
         } else {
           __pyx_t_1 = __pyx_t_4;
-          goto __pyx_L13_bool_binop_done;
+          goto __pyx_L10_bool_binop_done;
         }
 
-        /* "code/lib/_motionEstBM.pyx":74
+        /* "code/lib/_motionEstBM.pyx":73
  * 					stop_column_index + offset_column + _offset_column >= size_columns or \
  * 					start_row_index + offset_row + _offset_row < 0 or \
  * 					stop_row_index + offset_row + _offset_row >= size_rows:             # <<<<<<<<<<<<<<
@@ -2353,9 +2293,9 @@ static int __pyx_f_4code_3lib_12_motionEstBM_estTSS(__Pyx_memviewslice __pyx_v_i
  */
         __pyx_t_4 = ((((__pyx_v_stop_row_index + __pyx_v_offset_row) + __pyx_v__offset_row) >= __pyx_v_size_rows) != 0);
         __pyx_t_1 = __pyx_t_4;
-        __pyx_L13_bool_binop_done:;
+        __pyx_L10_bool_binop_done:;
 
-        /* "code/lib/_motionEstBM.pyx":71
+        /* "code/lib/_motionEstBM.pyx":70
  * 				_offset_row = x * stepSize
  * 
  * 				if start_column_index + offset_column + _offset_column < 0 or \             # <<<<<<<<<<<<<<
@@ -2364,7 +2304,7 @@ static int __pyx_f_4code_3lib_12_motionEstBM_estTSS(__Pyx_memviewslice __pyx_v_i
  */
         if (__pyx_t_1) {
 
-          /* "code/lib/_motionEstBM.pyx":75
+          /* "code/lib/_motionEstBM.pyx":74
  * 					start_row_index + offset_row + _offset_row < 0 or \
  * 					stop_row_index + offset_row + _offset_row >= size_rows:
  * 					continue             # <<<<<<<<<<<<<<
@@ -2373,7 +2313,7 @@ static int __pyx_f_4code_3lib_12_motionEstBM_estTSS(__Pyx_memviewslice __pyx_v_i
  */
           goto __pyx_L7_continue;
 
-          /* "code/lib/_motionEstBM.pyx":71
+          /* "code/lib/_motionEstBM.pyx":70
  * 				_offset_row = x * stepSize
  * 
  * 				if start_column_index + offset_column + _offset_column < 0 or \             # <<<<<<<<<<<<<<
@@ -2382,17 +2322,17 @@ static int __pyx_f_4code_3lib_12_motionEstBM_estTSS(__Pyx_memviewslice __pyx_v_i
  */
         }
 
-        /* "code/lib/_motionEstBM.pyx":77
+        /* "code/lib/_motionEstBM.pyx":76
  * 					continue
  * 
  * 				cost = evalMAD(im, next_im,             # <<<<<<<<<<<<<<
  * 					start_column_index, stop_column_index,
  * 					start_row_index, stop_row_index,
  */
-        __pyx_v_cost = __pyx_f_4code_3lib_12_motionEstBM_evalMAD(__pyx_v_im, __pyx_v_next_im, __pyx_v_start_column_index, __pyx_v_stop_column_index, __pyx_v_start_row_index, __pyx_v_stop_row_index, (__pyx_v_offset_column + __pyx_v__offset_column), (__pyx_v_offset_row + __pyx_v__offset_row), __pyx_v_cell_columns, __pyx_v_cell_rows);
+        __pyx_v_cost = __pyx_f_4code_3lib_12_motionEstBM_evalMAD(__pyx_v_im, __pyx_v_next_im, __pyx_v_start_column_index, __pyx_v_stop_column_index, __pyx_v_start_row_index, __pyx_v_stop_row_index, (__pyx_v_offset_column + __pyx_v__offset_column), (__pyx_v_offset_row + __pyx_v__offset_row), __pyx_v_ppc_column, __pyx_v_ppc_row);
 
-        /* "code/lib/_motionEstBM.pyx":83
- * 					cell_columns, cell_rows)
+        /* "code/lib/_motionEstBM.pyx":82
+ * 					ppc_column, ppc_row)
  * 
  * 				if cost < minCost:             # <<<<<<<<<<<<<<
  * 					minCost = cost
@@ -2401,7 +2341,7 @@ static int __pyx_f_4code_3lib_12_motionEstBM_estTSS(__Pyx_memviewslice __pyx_v_i
         __pyx_t_1 = ((__pyx_v_cost < __pyx_v_minCost) != 0);
         if (__pyx_t_1) {
 
-          /* "code/lib/_motionEstBM.pyx":84
+          /* "code/lib/_motionEstBM.pyx":83
  * 
  * 				if cost < minCost:
  * 					minCost = cost             # <<<<<<<<<<<<<<
@@ -2410,7 +2350,7 @@ static int __pyx_f_4code_3lib_12_motionEstBM_estTSS(__Pyx_memviewslice __pyx_v_i
  */
           __pyx_v_minCost = __pyx_v_cost;
 
-          /* "code/lib/_motionEstBM.pyx":85
+          /* "code/lib/_motionEstBM.pyx":84
  * 				if cost < minCost:
  * 					minCost = cost
  * 					min_offset_column = _offset_column             # <<<<<<<<<<<<<<
@@ -2419,7 +2359,7 @@ static int __pyx_f_4code_3lib_12_motionEstBM_estTSS(__Pyx_memviewslice __pyx_v_i
  */
           __pyx_v_min_offset_column = __pyx_v__offset_column;
 
-          /* "code/lib/_motionEstBM.pyx":86
+          /* "code/lib/_motionEstBM.pyx":85
  * 					minCost = cost
  * 					min_offset_column = _offset_column
  * 					min_offset_row = _offset_row             # <<<<<<<<<<<<<<
@@ -2428,8 +2368,8 @@ static int __pyx_f_4code_3lib_12_motionEstBM_estTSS(__Pyx_memviewslice __pyx_v_i
  */
           __pyx_v_min_offset_row = __pyx_v__offset_row;
 
-          /* "code/lib/_motionEstBM.pyx":83
- * 					cell_columns, cell_rows)
+          /* "code/lib/_motionEstBM.pyx":82
+ * 					ppc_column, ppc_row)
  * 
  * 				if cost < minCost:             # <<<<<<<<<<<<<<
  * 					minCost = cost
@@ -2440,36 +2380,36 @@ static int __pyx_f_4code_3lib_12_motionEstBM_estTSS(__Pyx_memviewslice __pyx_v_i
       }
     }
 
-    /* "code/lib/_motionEstBM.pyx":88
+    /* "code/lib/_motionEstBM.pyx":87
  * 					min_offset_row = _offset_row
  * 
  * 		offset_column += min_offset_column             # <<<<<<<<<<<<<<
  * 		offset_row += min_offset_row
- * 		_stepSize = _stepSize / 2
+ * 
  */
     __pyx_v_offset_column = (__pyx_v_offset_column + __pyx_v_min_offset_column);
 
-    /* "code/lib/_motionEstBM.pyx":89
+    /* "code/lib/_motionEstBM.pyx":88
  * 
  * 		offset_column += min_offset_column
  * 		offset_row += min_offset_row             # <<<<<<<<<<<<<<
- * 		_stepSize = _stepSize / 2
  * 
+ * 		stepSize = stepSize / 2
  */
     __pyx_v_offset_row = (__pyx_v_offset_row + __pyx_v_min_offset_row);
 
     /* "code/lib/_motionEstBM.pyx":90
- * 		offset_column += min_offset_column
  * 		offset_row += min_offset_row
- * 		_stepSize = _stepSize / 2             # <<<<<<<<<<<<<<
+ * 
+ * 		stepSize = stepSize / 2             # <<<<<<<<<<<<<<
  * 
  * 	return offset_row * 10 + offset_column
  */
-    __pyx_v__stepSize = (__pyx_v__stepSize / 2);
+    __pyx_v_stepSize = (__pyx_v_stepSize / 2);
   }
 
   /* "code/lib/_motionEstBM.pyx":92
- * 		_stepSize = _stepSize / 2
+ * 		stepSize = stepSize / 2
  * 
  * 	return offset_row * 10 + offset_column             # <<<<<<<<<<<<<<
  * 
@@ -2488,7 +2428,6 @@ static int __pyx_f_4code_3lib_12_motionEstBM_estTSS(__Pyx_memviewslice __pyx_v_i
 
   /* function exit code */
   __pyx_L0:;
-  __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
@@ -2506,20 +2445,20 @@ static PyMethodDef __pyx_mdef_4code_3lib_12_motionEstBM_1motionEstTSS = {"motion
 static PyObject *__pyx_pw_4code_3lib_12_motionEstBM_1motionEstTSS(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   __Pyx_memviewslice __pyx_v_im = { 0, 0, { 0 }, { 0 }, { 0 } };
   __Pyx_memviewslice __pyx_v_next_im = { 0, 0, { 0 }, { 0 }, { 0 } };
-  CYTHON_UNUSED int __pyx_v_size_columns;
-  CYTHON_UNUSED int __pyx_v_size_rows;
+  int __pyx_v_size_columns;
+  int __pyx_v_size_rows;
   int __pyx_v_cell_columns;
   int __pyx_v_cell_rows;
   int __pyx_v_stepSize;
-  int __pyx_v_number_of_cells_columns;
-  int __pyx_v_number_of_cells_rows;
+  int __pyx_v_ppc_column;
+  int __pyx_v_ppc_row;
   __Pyx_memviewslice __pyx_v_vx = { 0, 0, { 0 }, { 0 }, { 0 } };
   __Pyx_memviewslice __pyx_v_vy = { 0, 0, { 0 }, { 0 }, { 0 } };
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("motionEstTSS (wrapper)", 0);
   {
-    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_im,&__pyx_n_s_next_im,&__pyx_n_s_size_columns,&__pyx_n_s_size_rows,&__pyx_n_s_cell_columns,&__pyx_n_s_cell_rows,&__pyx_n_s_stepSize,&__pyx_n_s_number_of_cells_columns,&__pyx_n_s_number_of_cells_rows,&__pyx_n_s_vx,&__pyx_n_s_vy,0};
+    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_im,&__pyx_n_s_next_im,&__pyx_n_s_size_columns,&__pyx_n_s_size_rows,&__pyx_n_s_cell_columns,&__pyx_n_s_cell_rows,&__pyx_n_s_stepSize,&__pyx_n_s_ppc_column,&__pyx_n_s_ppc_row,&__pyx_n_s_vx,&__pyx_n_s_vy,0};
     PyObject* values[11] = {0,0,0,0,0,0,0,0,0,0,0};
     if (unlikely(__pyx_kwds)) {
       Py_ssize_t kw_args;
@@ -2575,12 +2514,12 @@ static PyObject *__pyx_pw_4code_3lib_12_motionEstBM_1motionEstTSS(PyObject *__py
           __Pyx_RaiseArgtupleInvalid("motionEstTSS", 1, 11, 11, 6); __PYX_ERR(0, 94, __pyx_L3_error)
         }
         case  7:
-        if (likely((values[7] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_number_of_cells_columns)) != 0)) kw_args--;
+        if (likely((values[7] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_ppc_column)) != 0)) kw_args--;
         else {
           __Pyx_RaiseArgtupleInvalid("motionEstTSS", 1, 11, 11, 7); __PYX_ERR(0, 94, __pyx_L3_error)
         }
         case  8:
-        if (likely((values[8] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_number_of_cells_rows)) != 0)) kw_args--;
+        if (likely((values[8] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_ppc_row)) != 0)) kw_args--;
         else {
           __Pyx_RaiseArgtupleInvalid("motionEstTSS", 1, 11, 11, 8); __PYX_ERR(0, 94, __pyx_L3_error)
         }
@@ -2620,10 +2559,10 @@ static PyObject *__pyx_pw_4code_3lib_12_motionEstBM_1motionEstTSS(PyObject *__py
     __pyx_v_cell_columns = __Pyx_PyInt_As_int(values[4]); if (unlikely((__pyx_v_cell_columns == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 97, __pyx_L3_error)
     __pyx_v_cell_rows = __Pyx_PyInt_As_int(values[5]); if (unlikely((__pyx_v_cell_rows == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 97, __pyx_L3_error)
     __pyx_v_stepSize = __Pyx_PyInt_As_int(values[6]); if (unlikely((__pyx_v_stepSize == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 97, __pyx_L3_error)
-    __pyx_v_number_of_cells_columns = __Pyx_PyInt_As_int(values[7]); if (unlikely((__pyx_v_number_of_cells_columns == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 98, __pyx_L3_error)
-    __pyx_v_number_of_cells_rows = __Pyx_PyInt_As_int(values[8]); if (unlikely((__pyx_v_number_of_cells_rows == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 98, __pyx_L3_error)
-    __pyx_v_vx = __Pyx_PyObject_to_MemoryviewSlice_d_dc_nn___pyx_t_5numpy_uint8_t(values[9]); if (unlikely(!__pyx_v_vx.memview)) __PYX_ERR(0, 99, __pyx_L3_error)
-    __pyx_v_vy = __Pyx_PyObject_to_MemoryviewSlice_d_dc_nn___pyx_t_5numpy_uint8_t(values[10]); if (unlikely(!__pyx_v_vy.memview)) __PYX_ERR(0, 100, __pyx_L3_error)
+    __pyx_v_ppc_column = __Pyx_PyInt_As_int(values[7]); if (unlikely((__pyx_v_ppc_column == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 98, __pyx_L3_error)
+    __pyx_v_ppc_row = __Pyx_PyInt_As_int(values[8]); if (unlikely((__pyx_v_ppc_row == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 98, __pyx_L3_error)
+    __pyx_v_vx = __Pyx_PyObject_to_MemoryviewSlice_d_dc_nn___pyx_t_5numpy_int_t(values[9]); if (unlikely(!__pyx_v_vx.memview)) __PYX_ERR(0, 99, __pyx_L3_error)
+    __pyx_v_vy = __Pyx_PyObject_to_MemoryviewSlice_d_dc_nn___pyx_t_5numpy_int_t(values[10]); if (unlikely(!__pyx_v_vy.memview)) __PYX_ERR(0, 100, __pyx_L3_error)
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
@@ -2633,14 +2572,14 @@ static PyObject *__pyx_pw_4code_3lib_12_motionEstBM_1motionEstTSS(PyObject *__py
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  __pyx_r = __pyx_pf_4code_3lib_12_motionEstBM_motionEstTSS(__pyx_self, __pyx_v_im, __pyx_v_next_im, __pyx_v_size_columns, __pyx_v_size_rows, __pyx_v_cell_columns, __pyx_v_cell_rows, __pyx_v_stepSize, __pyx_v_number_of_cells_columns, __pyx_v_number_of_cells_rows, __pyx_v_vx, __pyx_v_vy);
+  __pyx_r = __pyx_pf_4code_3lib_12_motionEstBM_motionEstTSS(__pyx_self, __pyx_v_im, __pyx_v_next_im, __pyx_v_size_columns, __pyx_v_size_rows, __pyx_v_cell_columns, __pyx_v_cell_rows, __pyx_v_stepSize, __pyx_v_ppc_column, __pyx_v_ppc_row, __pyx_v_vx, __pyx_v_vy);
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_4code_3lib_12_motionEstBM_motionEstTSS(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_im, __Pyx_memviewslice __pyx_v_next_im, CYTHON_UNUSED int __pyx_v_size_columns, CYTHON_UNUSED int __pyx_v_size_rows, int __pyx_v_cell_columns, int __pyx_v_cell_rows, int __pyx_v_stepSize, int __pyx_v_number_of_cells_columns, int __pyx_v_number_of_cells_rows, __Pyx_memviewslice __pyx_v_vx, __Pyx_memviewslice __pyx_v_vy) {
+static PyObject *__pyx_pf_4code_3lib_12_motionEstBM_motionEstTSS(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_im, __Pyx_memviewslice __pyx_v_next_im, int __pyx_v_size_columns, int __pyx_v_size_rows, int __pyx_v_cell_columns, int __pyx_v_cell_rows, int __pyx_v_stepSize, int __pyx_v_ppc_column, int __pyx_v_ppc_row, __Pyx_memviewslice __pyx_v_vx, __Pyx_memviewslice __pyx_v_vy) {
   int __pyx_v_i;
   int __pyx_v_j;
   int __pyx_v_v;
@@ -2650,87 +2589,95 @@ static PyObject *__pyx_pf_4code_3lib_12_motionEstBM_motionEstTSS(CYTHON_UNUSED P
   int __pyx_t_2;
   int __pyx_t_3;
   int __pyx_t_4;
-  PyObject *__pyx_t_5 = NULL;
-  PyObject *__pyx_t_6 = NULL;
-  PyObject *__pyx_t_7 = NULL;
+  Py_ssize_t __pyx_t_5;
+  Py_ssize_t __pyx_t_6;
+  Py_ssize_t __pyx_t_7;
   Py_ssize_t __pyx_t_8;
-  Py_ssize_t __pyx_t_9;
-  Py_ssize_t __pyx_t_10;
-  Py_ssize_t __pyx_t_11;
   __Pyx_RefNannySetupContext("motionEstTSS", 0);
 
-  /* "code/lib/_motionEstBM.pyx":104
+  /* "code/lib/_motionEstBM.pyx":103
+ * 	cdef int i, j
  * 	cdef int v
- * 	# with nogil:
- * 	for i in range(number_of_cells_rows):             # <<<<<<<<<<<<<<
- * 		for j in range(number_of_cells_columns):
- * 			print i, j
+ * 	with nogil:             # <<<<<<<<<<<<<<
+ * 		for i in range(cell_rows):
+ * 			for j in range(cell_columns):
  */
-  __pyx_t_1 = __pyx_v_number_of_cells_rows;
-  for (__pyx_t_2 = 0; __pyx_t_2 < __pyx_t_1; __pyx_t_2+=1) {
-    __pyx_v_i = __pyx_t_2;
+  {
+      #ifdef WITH_THREAD
+      PyThreadState *_save;
+      Py_UNBLOCK_THREADS
+      #endif
+      /*try:*/ {
 
-    /* "code/lib/_motionEstBM.pyx":105
- * 	# with nogil:
- * 	for i in range(number_of_cells_rows):
- * 		for j in range(number_of_cells_columns):             # <<<<<<<<<<<<<<
- * 			print i, j
- * 			v = estTSS(im, next_im, j, i, cell_columns, cell_rows, stepSize, number_of_cells_columns, number_of_cells_rows)
+        /* "code/lib/_motionEstBM.pyx":104
+ * 	cdef int v
+ * 	with nogil:
+ * 		for i in range(cell_rows):             # <<<<<<<<<<<<<<
+ * 			for j in range(cell_columns):
+ * 				v = estTSS(im, next_im, j, i, ppc_column, ppc_row, stepSize, size_columns, size_rows)
  */
-    __pyx_t_3 = __pyx_v_number_of_cells_columns;
-    for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
-      __pyx_v_j = __pyx_t_4;
+        __pyx_t_1 = __pyx_v_cell_rows;
+        for (__pyx_t_2 = 0; __pyx_t_2 < __pyx_t_1; __pyx_t_2+=1) {
+          __pyx_v_i = __pyx_t_2;
 
-      /* "code/lib/_motionEstBM.pyx":106
- * 	for i in range(number_of_cells_rows):
- * 		for j in range(number_of_cells_columns):
- * 			print i, j             # <<<<<<<<<<<<<<
- * 			v = estTSS(im, next_im, j, i, cell_columns, cell_rows, stepSize, number_of_cells_columns, number_of_cells_rows)
- * 			vy[i, j] = v / 10
+          /* "code/lib/_motionEstBM.pyx":105
+ * 	with nogil:
+ * 		for i in range(cell_rows):
+ * 			for j in range(cell_columns):             # <<<<<<<<<<<<<<
+ * 				v = estTSS(im, next_im, j, i, ppc_column, ppc_row, stepSize, size_columns, size_rows)
+ * 				vy[i, j] = v / 10
  */
-      __pyx_t_5 = __Pyx_PyInt_From_int(__pyx_v_i); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 106, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_5);
-      __pyx_t_6 = __Pyx_PyInt_From_int(__pyx_v_j); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 106, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_6);
-      __pyx_t_7 = PyTuple_New(2); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 106, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_7);
-      __Pyx_GIVEREF(__pyx_t_5);
-      PyTuple_SET_ITEM(__pyx_t_7, 0, __pyx_t_5);
-      __Pyx_GIVEREF(__pyx_t_6);
-      PyTuple_SET_ITEM(__pyx_t_7, 1, __pyx_t_6);
-      __pyx_t_5 = 0;
-      __pyx_t_6 = 0;
-      if (__Pyx_Print(0, __pyx_t_7, 1) < 0) __PYX_ERR(0, 106, __pyx_L1_error)
-      __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+          __pyx_t_3 = __pyx_v_cell_columns;
+          for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
+            __pyx_v_j = __pyx_t_4;
 
-      /* "code/lib/_motionEstBM.pyx":107
- * 		for j in range(number_of_cells_columns):
- * 			print i, j
- * 			v = estTSS(im, next_im, j, i, cell_columns, cell_rows, stepSize, number_of_cells_columns, number_of_cells_rows)             # <<<<<<<<<<<<<<
- * 			vy[i, j] = v / 10
- * 			vx[i, j] = v % 10
+            /* "code/lib/_motionEstBM.pyx":106
+ * 		for i in range(cell_rows):
+ * 			for j in range(cell_columns):
+ * 				v = estTSS(im, next_im, j, i, ppc_column, ppc_row, stepSize, size_columns, size_rows)             # <<<<<<<<<<<<<<
+ * 				vy[i, j] = v / 10
+ * 				vx[i, j] = v % 10
  */
-      __pyx_v_v = __pyx_f_4code_3lib_12_motionEstBM_estTSS(__pyx_v_im, __pyx_v_next_im, __pyx_v_j, __pyx_v_i, __pyx_v_cell_columns, __pyx_v_cell_rows, __pyx_v_stepSize, __pyx_v_number_of_cells_columns, __pyx_v_number_of_cells_rows);
+            __pyx_v_v = __pyx_f_4code_3lib_12_motionEstBM_estTSS(__pyx_v_im, __pyx_v_next_im, __pyx_v_j, __pyx_v_i, __pyx_v_ppc_column, __pyx_v_ppc_row, __pyx_v_stepSize, __pyx_v_size_columns, __pyx_v_size_rows);
 
-      /* "code/lib/_motionEstBM.pyx":108
- * 			print i, j
- * 			v = estTSS(im, next_im, j, i, cell_columns, cell_rows, stepSize, number_of_cells_columns, number_of_cells_rows)
- * 			vy[i, j] = v / 10             # <<<<<<<<<<<<<<
- * 			vx[i, j] = v % 10
+            /* "code/lib/_motionEstBM.pyx":107
+ * 			for j in range(cell_columns):
+ * 				v = estTSS(im, next_im, j, i, ppc_column, ppc_row, stepSize, size_columns, size_rows)
+ * 				vy[i, j] = v / 10             # <<<<<<<<<<<<<<
+ * 				vx[i, j] = v % 10
  */
-      __pyx_t_8 = __pyx_v_i;
-      __pyx_t_9 = __pyx_v_j;
-      *((__pyx_t_5numpy_uint8_t *) ( /* dim=1 */ ((char *) (((__pyx_t_5numpy_uint8_t *) ( /* dim=0 */ (__pyx_v_vy.data + __pyx_t_8 * __pyx_v_vy.strides[0]) )) + __pyx_t_9)) )) = (__pyx_v_v / 10);
+            __pyx_t_5 = __pyx_v_i;
+            __pyx_t_6 = __pyx_v_j;
+            *((__pyx_t_5numpy_int_t *) ( /* dim=1 */ ((char *) (((__pyx_t_5numpy_int_t *) ( /* dim=0 */ (__pyx_v_vy.data + __pyx_t_5 * __pyx_v_vy.strides[0]) )) + __pyx_t_6)) )) = (__pyx_v_v / 10);
 
-      /* "code/lib/_motionEstBM.pyx":109
- * 			v = estTSS(im, next_im, j, i, cell_columns, cell_rows, stepSize, number_of_cells_columns, number_of_cells_rows)
- * 			vy[i, j] = v / 10
- * 			vx[i, j] = v % 10             # <<<<<<<<<<<<<<
+            /* "code/lib/_motionEstBM.pyx":108
+ * 				v = estTSS(im, next_im, j, i, ppc_column, ppc_row, stepSize, size_columns, size_rows)
+ * 				vy[i, j] = v / 10
+ * 				vx[i, j] = v % 10             # <<<<<<<<<<<<<<
  */
-      __pyx_t_10 = __pyx_v_i;
-      __pyx_t_11 = __pyx_v_j;
-      *((__pyx_t_5numpy_uint8_t *) ( /* dim=1 */ ((char *) (((__pyx_t_5numpy_uint8_t *) ( /* dim=0 */ (__pyx_v_vx.data + __pyx_t_10 * __pyx_v_vx.strides[0]) )) + __pyx_t_11)) )) = (__pyx_v_v % 10);
-    }
+            __pyx_t_7 = __pyx_v_i;
+            __pyx_t_8 = __pyx_v_j;
+            *((__pyx_t_5numpy_int_t *) ( /* dim=1 */ ((char *) (((__pyx_t_5numpy_int_t *) ( /* dim=0 */ (__pyx_v_vx.data + __pyx_t_7 * __pyx_v_vx.strides[0]) )) + __pyx_t_8)) )) = (__pyx_v_v % 10);
+          }
+        }
+      }
+
+      /* "code/lib/_motionEstBM.pyx":103
+ * 	cdef int i, j
+ * 	cdef int v
+ * 	with nogil:             # <<<<<<<<<<<<<<
+ * 		for i in range(cell_rows):
+ * 			for j in range(cell_columns):
+ */
+      /*finally:*/ {
+        /*normal exit:*/{
+          #ifdef WITH_THREAD
+          Py_BLOCK_THREADS
+          #endif
+          goto __pyx_L5;
+        }
+        __pyx_L5:;
+      }
   }
 
   /* "code/lib/_motionEstBM.pyx":94
@@ -2743,14 +2690,6 @@ static PyObject *__pyx_pf_4code_3lib_12_motionEstBM_motionEstTSS(CYTHON_UNUSED P
 
   /* function exit code */
   __pyx_r = Py_None; __Pyx_INCREF(Py_None);
-  goto __pyx_L0;
-  __pyx_L1_error:;
-  __Pyx_XDECREF(__pyx_t_5);
-  __Pyx_XDECREF(__pyx_t_6);
-  __Pyx_XDECREF(__pyx_t_7);
-  __Pyx_AddTraceback("code.lib._motionEstBM.motionEstTSS", __pyx_clineno, __pyx_lineno, __pyx_filename);
-  __pyx_r = NULL;
-  __pyx_L0:;
   __PYX_XDEC_MEMVIEW(&__pyx_v_im, 1);
   __PYX_XDEC_MEMVIEW(&__pyx_v_next_im, 1);
   __PYX_XDEC_MEMVIEW(&__pyx_v_vx, 1);
@@ -17177,10 +17116,8 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_kp_s_contiguous_and_indirect, __pyx_k_contiguous_and_indirect, sizeof(__pyx_k_contiguous_and_indirect), 0, 0, 1, 0},
   {&__pyx_n_s_dtype_is_object, __pyx_k_dtype_is_object, sizeof(__pyx_k_dtype_is_object), 0, 0, 1, 1},
   {&__pyx_n_s_encode, __pyx_k_encode, sizeof(__pyx_k_encode), 0, 0, 1, 1},
-  {&__pyx_n_s_end, __pyx_k_end, sizeof(__pyx_k_end), 0, 0, 1, 1},
   {&__pyx_n_s_enumerate, __pyx_k_enumerate, sizeof(__pyx_k_enumerate), 0, 0, 1, 1},
   {&__pyx_n_s_error, __pyx_k_error, sizeof(__pyx_k_error), 0, 0, 1, 1},
-  {&__pyx_n_s_file, __pyx_k_file, sizeof(__pyx_k_file), 0, 0, 1, 1},
   {&__pyx_n_s_flags, __pyx_k_flags, sizeof(__pyx_k_flags), 0, 0, 1, 1},
   {&__pyx_n_s_format, __pyx_k_format, sizeof(__pyx_k_format), 0, 0, 1, 1},
   {&__pyx_n_s_fortran, __pyx_k_fortran, sizeof(__pyx_k_fortran), 0, 0, 1, 1},
@@ -17204,12 +17141,11 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_ndim, __pyx_k_ndim, sizeof(__pyx_k_ndim), 0, 0, 1, 1},
   {&__pyx_n_s_next_im, __pyx_k_next_im, sizeof(__pyx_k_next_im), 0, 0, 1, 1},
   {&__pyx_n_s_np, __pyx_k_np, sizeof(__pyx_k_np), 0, 0, 1, 1},
-  {&__pyx_n_s_number_of_cells_columns, __pyx_k_number_of_cells_columns, sizeof(__pyx_k_number_of_cells_columns), 0, 0, 1, 1},
-  {&__pyx_n_s_number_of_cells_rows, __pyx_k_number_of_cells_rows, sizeof(__pyx_k_number_of_cells_rows), 0, 0, 1, 1},
   {&__pyx_n_s_numpy, __pyx_k_numpy, sizeof(__pyx_k_numpy), 0, 0, 1, 1},
   {&__pyx_n_s_obj, __pyx_k_obj, sizeof(__pyx_k_obj), 0, 0, 1, 1},
   {&__pyx_n_s_pack, __pyx_k_pack, sizeof(__pyx_k_pack), 0, 0, 1, 1},
-  {&__pyx_n_s_print, __pyx_k_print, sizeof(__pyx_k_print), 0, 0, 1, 1},
+  {&__pyx_n_s_ppc_column, __pyx_k_ppc_column, sizeof(__pyx_k_ppc_column), 0, 0, 1, 1},
+  {&__pyx_n_s_ppc_row, __pyx_k_ppc_row, sizeof(__pyx_k_ppc_row), 0, 0, 1, 1},
   {&__pyx_n_s_pyx_getbuffer, __pyx_k_pyx_getbuffer, sizeof(__pyx_k_pyx_getbuffer), 0, 0, 1, 1},
   {&__pyx_n_s_pyx_vtable, __pyx_k_pyx_vtable, sizeof(__pyx_k_pyx_vtable), 0, 0, 1, 1},
   {&__pyx_n_s_range, __pyx_k_range, sizeof(__pyx_k_range), 0, 0, 1, 1},
@@ -17473,7 +17409,7 @@ static int __Pyx_InitCachedConstants(void) {
  * 				cnp.uint8_t[:, ::1] next_im,
  * 				int size_columns, int size_rows,
  */
-  __pyx_tuple__20 = PyTuple_Pack(14, __pyx_n_s_im, __pyx_n_s_next_im, __pyx_n_s_size_columns, __pyx_n_s_size_rows, __pyx_n_s_cell_columns, __pyx_n_s_cell_rows, __pyx_n_s_stepSize, __pyx_n_s_number_of_cells_columns, __pyx_n_s_number_of_cells_rows, __pyx_n_s_vx, __pyx_n_s_vy, __pyx_n_s_i, __pyx_n_s_j, __pyx_n_s_v); if (unlikely(!__pyx_tuple__20)) __PYX_ERR(0, 94, __pyx_L1_error)
+  __pyx_tuple__20 = PyTuple_Pack(14, __pyx_n_s_im, __pyx_n_s_next_im, __pyx_n_s_size_columns, __pyx_n_s_size_rows, __pyx_n_s_cell_columns, __pyx_n_s_cell_rows, __pyx_n_s_stepSize, __pyx_n_s_ppc_column, __pyx_n_s_ppc_row, __pyx_n_s_vx, __pyx_n_s_vy, __pyx_n_s_i, __pyx_n_s_j, __pyx_n_s_v); if (unlikely(!__pyx_tuple__20)) __PYX_ERR(0, 94, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__20);
   __Pyx_GIVEREF(__pyx_tuple__20);
   __pyx_codeobj__21 = (PyObject*)__Pyx_PyCode_New(11, 0, 14, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__20, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_H_SIP5_code_v3_python_HOG_code_l, __pyx_n_s_motionEstTSS, 94, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__21)) __PYX_ERR(0, 94, __pyx_L1_error)
@@ -20197,6 +20133,29 @@ __pyx_fail:
         return (target_type) value;\
     }
 
+/* ObjectToMemviewSlice */
+        static CYTHON_INLINE __Pyx_memviewslice __Pyx_PyObject_to_MemoryviewSlice_d_dc_nn___pyx_t_5numpy_int_t(PyObject *obj) {
+    __Pyx_memviewslice result = { 0, 0, { 0 }, { 0 }, { 0 } };
+    __Pyx_BufFmt_StackElem stack[1];
+    int axes_specs[] = { (__Pyx_MEMVIEW_DIRECT | __Pyx_MEMVIEW_FOLLOW), (__Pyx_MEMVIEW_DIRECT | __Pyx_MEMVIEW_CONTIG) };
+    int retcode;
+    if (obj == Py_None) {
+        result.memview = (struct __pyx_memoryview_obj *) Py_None;
+        return result;
+    }
+    retcode = __Pyx_ValidateAndInit_memviewslice(axes_specs, __Pyx_IS_C_CONTIG,
+                                                 (PyBUF_C_CONTIGUOUS | PyBUF_FORMAT | PyBUF_WRITABLE), 2,
+                                                 &__Pyx_TypeInfo_nn___pyx_t_5numpy_int_t, stack,
+                                                 &result, obj);
+    if (unlikely(retcode == -1))
+        goto __pyx_fail;
+    return result;
+__pyx_fail:
+    result.memview = NULL;
+    result.data = NULL;
+    return result;
+}
+
 /* CIntToPy */
         static CYTHON_INLINE PyObject* __Pyx_PyInt_From_int(int value) {
     const int neg_one = (int) -1, const_zero = (int) 0;
@@ -20223,112 +20182,6 @@ __pyx_fail:
                                      little, !is_unsigned);
     }
 }
-
-/* Print */
-        #if !CYTHON_COMPILING_IN_PYPY && PY_MAJOR_VERSION < 3
-static PyObject *__Pyx_GetStdout(void) {
-    PyObject *f = PySys_GetObject((char *)"stdout");
-    if (!f) {
-        PyErr_SetString(PyExc_RuntimeError, "lost sys.stdout");
-    }
-    return f;
-}
-static int __Pyx_Print(PyObject* f, PyObject *arg_tuple, int newline) {
-    int i;
-    if (!f) {
-        if (!(f = __Pyx_GetStdout()))
-            return -1;
-    }
-    Py_INCREF(f);
-    for (i=0; i < PyTuple_GET_SIZE(arg_tuple); i++) {
-        PyObject* v;
-        if (PyFile_SoftSpace(f, 1)) {
-            if (PyFile_WriteString(" ", f) < 0)
-                goto error;
-        }
-        v = PyTuple_GET_ITEM(arg_tuple, i);
-        if (PyFile_WriteObject(v, f, Py_PRINT_RAW) < 0)
-            goto error;
-        if (PyString_Check(v)) {
-            char *s = PyString_AsString(v);
-            Py_ssize_t len = PyString_Size(v);
-            if (len > 0) {
-                switch (s[len-1]) {
-                    case ' ': break;
-                    case '\f': case '\r': case '\n': case '\t': case '\v':
-                        PyFile_SoftSpace(f, 0);
-                        break;
-                    default:  break;
-                }
-            }
-        }
-    }
-    if (newline) {
-        if (PyFile_WriteString("\n", f) < 0)
-            goto error;
-        PyFile_SoftSpace(f, 0);
-    }
-    Py_DECREF(f);
-    return 0;
-error:
-    Py_DECREF(f);
-    return -1;
-}
-#else
-static int __Pyx_Print(PyObject* stream, PyObject *arg_tuple, int newline) {
-    PyObject* kwargs = 0;
-    PyObject* result = 0;
-    PyObject* end_string;
-    if (unlikely(!__pyx_print)) {
-        __pyx_print = PyObject_GetAttr(__pyx_b, __pyx_n_s_print);
-        if (!__pyx_print)
-            return -1;
-    }
-    if (stream) {
-        kwargs = PyDict_New();
-        if (unlikely(!kwargs))
-            return -1;
-        if (unlikely(PyDict_SetItem(kwargs, __pyx_n_s_file, stream) < 0))
-            goto bad;
-        if (!newline) {
-            end_string = PyUnicode_FromStringAndSize(" ", 1);
-            if (unlikely(!end_string))
-                goto bad;
-            if (PyDict_SetItem(kwargs, __pyx_n_s_end, end_string) < 0) {
-                Py_DECREF(end_string);
-                goto bad;
-            }
-            Py_DECREF(end_string);
-        }
-    } else if (!newline) {
-        if (unlikely(!__pyx_print_kwargs)) {
-            __pyx_print_kwargs = PyDict_New();
-            if (unlikely(!__pyx_print_kwargs))
-                return -1;
-            end_string = PyUnicode_FromStringAndSize(" ", 1);
-            if (unlikely(!end_string))
-                return -1;
-            if (PyDict_SetItem(__pyx_print_kwargs, __pyx_n_s_end, end_string) < 0) {
-                Py_DECREF(end_string);
-                return -1;
-            }
-            Py_DECREF(end_string);
-        }
-        kwargs = __pyx_print_kwargs;
-    }
-    result = PyObject_Call(__pyx_print, arg_tuple, kwargs);
-    if (unlikely(kwargs) && (kwargs != __pyx_print_kwargs))
-        Py_DECREF(kwargs);
-    if (!result)
-        return -1;
-    Py_DECREF(result);
-    return 0;
-bad:
-    if (kwargs != __pyx_print_kwargs)
-        Py_XDECREF(kwargs);
-    return -1;
-}
-#endif
 
 /* None */
         #if CYTHON_CCOMPLEX
