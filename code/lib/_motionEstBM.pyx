@@ -5,8 +5,8 @@
 import numpy as np
 cimport numpy as cnp
 
-cdef float evalMAD(unsigned char[:, ::1] im, 
-				unsigned char[:, ::1] next_im,
+cdef float evalMAD(cnp.uint8_t[:, ::1] im, 
+				cnp.uint8_t[:, ::1] next_im,
 				int start_column_index, int stop_column_index,
 				int start_row_index, int stop_row_index,
 				int offset_column, int offset_row,
@@ -26,8 +26,8 @@ cdef float evalMAD(unsigned char[:, ::1] im,
 	
 	return cost / (size_columns * size_rows)
 
-cdef int estTSS(unsigned char[:, ::1] im, 
-			unsigned char[:, ::1] next_im, 
+cdef int estTSS(cnp.uint8_t[:, ::1] im, 
+			cnp.uint8_t[:, ::1] next_im, 
 			int column_index, int row_index, 
 			int cell_columns, int cell_rows, int stepSize, 
 			int size_columns, int size_rows) nogil:
@@ -40,7 +40,7 @@ cdef int estTSS(unsigned char[:, ::1] im,
 		min_offset_column, min_offset_row, \
 		_stepSize
 	
-	cdef float cost, minCost, minY, minX
+	cdef float cost, minCost
 
 	start_column_index = column_index * cell_columns
 	stop_column_index = (column_index + 1) * cell_columns
@@ -49,7 +49,7 @@ cdef int estTSS(unsigned char[:, ::1] im,
 
 	offset_column = 0
 	offset_row = 0
-
+	
 	minCost = evalMAD(im, next_im, 
 		start_column_index, stop_column_index, 
 		start_row_index, stop_row_index,
@@ -71,7 +71,7 @@ cdef int estTSS(unsigned char[:, ::1] im,
 				if start_column_index + offset_column + _offset_column < 0 or \
 					stop_column_index + offset_column + _offset_column >= size_columns or \
 					start_row_index + offset_row + _offset_row < 0 or \
-					stop_row_index + offset_row + _offset_row < 0:
+					stop_row_index + offset_row + _offset_row >= size_rows:
 					continue
 
 				cost = evalMAD(im, next_im, 
@@ -91,13 +91,13 @@ cdef int estTSS(unsigned char[:, ::1] im,
 
 	return offset_row * 10 + offset_column
 
-def motionEstTSS(unsigned char[:, ::1] im, 
-				unsigned char[:, ::1] next_im,
+def motionEstTSS( cnp.uint8_t[:, ::1] im, 
+				cnp.uint8_t[:, ::1] next_im,
 				int size_columns, int size_rows,
 				int cell_columns, int cell_rows, int stepSize,
 				int number_of_cells_columns, int number_of_cells_rows,
-				cnp.float64_t[:, ::1] vx,
-				cnp.float64_t[:, ::1] vy):
+				cnp.uint8_t[:, ::1] vx,
+				cnp.uint8_t[:, ::1] vy):
 	cdef int i, j
 	cdef int v
 	with nogil:
