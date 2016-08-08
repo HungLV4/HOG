@@ -20,6 +20,8 @@ import gdal
 from gdalconst import *
 from osgeo import gdal_array, osr
 
+import matplotlib.pyplot as plt
+
 HOG_CLF_FILE = "genfiles/ships_hog_clf.pkl"
 TRAIN_LABEL_FILE = "genfiles/ships_label.csv"
 TRAIN_FEATURES_FILE = "genfiles/ships_feature.dat"
@@ -29,9 +31,27 @@ FILEPATH_PREFIX = "../../../../temp/CT_OCEAN/"
 def getAllFilesInDirectory(dir):
 	return glob.glob(dir)
 
+def calcAbnormality(band):
+	pass
+
+def gradient():
+	files = getAllFilesInDirectory("../../train/ship/neg/64x128/*.png")
+	for filepath in files:
+		im = cv2.imread(filepath, 0)
+
+		# calculate the gradient
+		gx = cv2.Sobel(im, cv2.CV_64F, 1, 0, ksize=5)
+		gy = cv2.Sobel(im, cv2.CV_64F, 0, 1, ksize=5)
+
+		# 
+		orientations = np.arctan2(gy, gx) * (180 / np.pi) % 180
+		magnitude = np.hypot(gy, gx)
+
+		# hist, edges = np.histogram(orientations[1:-1, 1:-1], bins=[10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180])
+
 def trainHOG():
-	trainPositiveFiles = getAllFilesInDirectory("train/ship/pos/64x128/*.png")
-	trainNegativeFiles = getAllFilesInDirectory("train/ship/neg/64x128/*.png")
+	trainPositiveFiles = getAllFilesInDirectory("../../train/ship/pos/64x128/*.png")
+	trainNegativeFiles = getAllFilesInDirectory("../../train/ship/neg/64x128/*.png")
 
 	labels = np.array([-1 for i in range(len(trainNegativeFiles))] + \
 						[1 for i in range(len(trainPositiveFiles))])
@@ -91,8 +111,7 @@ def detectMultiscale(filename, winStride = (4, 4)):
 	cv2.imwrite("results/ship/multi_scale/" + filename, image)
 
 if __name__ == '__main__':
-	if not os.path.isfile(HOG_CLF_FILE):
-		trainHOG()
-
-	detect()
+	gradient()
+	# trainHOG()
+	# detect()
 	# detectMultiscale("0000093.png")
