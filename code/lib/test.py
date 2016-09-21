@@ -13,7 +13,7 @@ def motionEst(im, im_ref, pixels_per_cell, stepSize):
 	""" Computes motion vectors using 3-step search method
 		Input:
 			curI: The image for which we want to find motion vectors
-			nextI: The reference image
+			nextI: The reference imagen
 			pixels_per_cell:
 		 	stepSize:
 		Ouput:
