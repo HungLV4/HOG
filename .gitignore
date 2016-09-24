@@ -13,3 +13,5 @@
 *.c
 *.tif
 *.jpg
+*.pgm
+code/ship_detection/data/1.pgm.txt

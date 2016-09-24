@@ -13,11 +13,11 @@ import skimage
 
 from skimage.feature import hog
 
-import gdal
-from gdalconst import *
-from osgeo import gdal_array, osr
+# import gdal
+# from gdalconst import *
+# from osgeo import gdal_array, osr
 
-from _whoghistogram import whog_histograms
+# from _whoghistogram import whog_histograms
 
 def calcGradient(im):
 	# gx = cv2.Sobel(im, cv2.CV_64F, 1, 0, ksize=-1)
@@ -36,8 +36,8 @@ def calcGradient(im):
 	return gx, gy
 
 def hog_analysis(im, num_orientation):
-	fd, hog_im = hog(im, orientations=num_orientation, pixels_per_cell=(8, 8), cells_per_block=(2, 2), visualise=True)
-	cv2.imwrite("results/hog.png", hog_im)
+	fd, hog_im = hog(im, orientations=num_orientation, pixels_per_cell=(8, 8), cells_per_block=(1, 1), visualise=True)
+	cv2.imwrite("results/1.png", hog_im)
 
 def sdssahog(im, num_orientation):
 	anm = np.zeros(im.shape, dtype=np.float64)
@@ -127,9 +127,10 @@ def test(im, index):
 	cv2.imwrite('results/vis_VNR_PAN20150902.png', im)
 
 if __name__ == '__main__':
-	impath = "../../test/ship/full/VNR_PAN20150902_land_wiped.png"
+	impath = "data/1.png"
 	if os.path.isfile(impath):
 		im = cv2.imread(impath, 0)
+		hog_analysis(im, 9)
 		
-		im = im.astype('float')
-		test(im, 3)	
+		# im = im.astype('float')
+		# test(im, 3)
