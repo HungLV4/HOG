@@ -7,40 +7,28 @@ cimport numpy as np
 from operator import itemgetter
 from libc.math cimport sqrt, floor, atan2, sin, cos, M_PI, round
 
-def HoughLinesStandard(unsigned char[:, ::1] img,
-						int size_columns, int size_rows,
-						float rho, float theta, int threshold_hough,
-						double min_theta, double max_theta,
-						int maxLines, int mode):
-	cdef int i, j, n, r, idx
-	cdef int base
-	cdef float irho = 1 / rho
-	cdef int numangle = int(round((max_theta - min_theta) / theta))
-	cdef int numrho = int(round(((size_columns + size_rows) * 2 + 1) / rho))
-	cdef double scale = 1. / (numrho + 2)
-
-	cdef float rho_t, angle_t
-
-	cdef list _sort_buf = []
-	cdef list lines = []
-
+def ll_angle(unsigned char[:, ::1] img, 
+			int size_columns, int size_rows,
+			float NOTDEF):
 	"""
-	Stage 1: Calculating gradient magnitude and level-line angle
+	Calculating gradient magnitude and level-line angle
 	Input:
 		img: original 8-bit image
 	Output:
 		modgrad: gradient magnitude image
 		modang: gradient angle image
 	"""
+	cdef int i, j
+	
 	cdef float quant = 2.0 # Bound to the quantization error on the gradient norm
 	cdef float ang_th = 22.5 # Gradient angle tolerance in degrees
-	cdef float NOTDEF = -1.0 # default value for pixel whose gradient magnitude < threshold_grad
 
 	# calculating gradient magnitude threshold
 	cdef float prec = M_PI * ang_th / 180.0
 	cdef float threshold_grad = quant / sin(prec)
 	
 	cdef float gx, gy, norm2, norm
+	
 	# initialize gradient magnitude and angle level-line data
 	cdef np.ndarray[np.float32_t, ndim=2] modgrad = np.zeros((size_rows, size_columns), dtype=np.float32)
 	cdef np.ndarray[np.float32_t, ndim=2] modang = np.zeros((size_rows, size_columns), dtype=np.float32)
@@ -64,19 +52,27 @@ def HoughLinesStandard(unsigned char[:, ::1] img,
 					else:
 						modgrad[i, j] = norm
 						modang[i, j] = atan2(gx, -gy)
-	
-	"""
-	Stage 2: Weighted voting
-	Input:
-		modgrad: gradient magnitude
-		modang: gradient angle
-	Output:
-		modgrad: weighted values
-	"""
+	return modgrad, modang
 
+def hough_lines(float[:, ::1] modgrad,
+						int size_columns, int size_rows,
+						float rho, float theta, int threshold_hough,
+						double min_theta, double max_theta,
+						int maxLines, float NOTDEF, int mode):
+	cdef int i, j, n, r, idx
+	cdef int base
+	cdef float irho = 1 / rho
+	cdef int numangle = int(round((max_theta - min_theta) / theta))
+	cdef int numrho = int(round(((size_columns + size_rows) * 2 + 1) / rho))
+	cdef double scale = 1. / (numrho + 2)
+
+	cdef float rho_t, angle_t
+
+	cdef list _sort_buf = []
+	cdef list lines = []
 	
 	"""
-	Stage 3: Transform to Hough space using weighted gradient
+	Transform to Hough space using weighted gradient
 	Input:
 		modgrad: gradient magnitude
 	Ouput:
@@ -134,6 +130,6 @@ def HoughLinesStandard(unsigned char[:, ::1] img,
 	cdef np.ndarray[np.float32_t, ndim=2] accum_vis = np.zeros((numangle + 2, numrho + 2), dtype=np.float32)
 	accum_vis = accum.reshape((numangle + 2, numrho + 2))
 	
-	return lines, accum_vis, modgrad
+	return lines, accum_vis
 
 

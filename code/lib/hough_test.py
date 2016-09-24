@@ -6,12 +6,17 @@ import gdal
 from gdalconst import *
 from osgeo import gdal_array, osr
 
-from _hough import HoughLinesStandard
+from _hough import hough_lines, ll_angle
 
 index = 4
 
 img = cv2.imread("hough/hough%d.png" % index)
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+"""
+Pre-processing
+"""
+
 
 """
 OpenCV Hough
@@ -32,11 +37,20 @@ OpenCV Hough
 # cv2.imwrite('hough/houghlines.jpg', img)
 
 """ 
-Proposed Hough transform
+Hough transform
 """
-mode = 1 # 0: Hough , otherwise: Weighted Hough
-maxline = 20
-lines, accum, edges = HoughLinesStandard(gray, gray.shape[1], gray.shape[0], 1, np.pi / 180, 100, 0, np.pi, maxline, mode)
+mode = 1 # 0: Naive-Hough , otherwise: Weighted-Hough
+maxline = 10
+NOTDEF = -1
+
+# calculating gradient angle and magnitude
+modgrad, modang = ll_angle(gray, gray.shape[1], gray.shape[0], NOTDEF)
+
+# TODO: surrounding suprression
+
+
+# hough line transform
+lines, accum = hough_lines(modgrad, gray.shape[1], gray.shape[0], 1, np.pi / 180, 100, 0, np.pi, maxline, NOTDEF, mode)
 for line in lines:
 	rho, theta = line[0], line[1]
 
@@ -54,4 +68,4 @@ for line in lines:
 cv2.imwrite('hough/houghlines_%d.jpg' % index, img)
 gdal_array.SaveArray(accum, 'hough/accum%d.tif' % index, "GTiff")
 
-gdal_array.SaveArray(edges, 'hough/edges%d.tif' % index, "GTiff")
+gdal_array.SaveArray(modgrad, 'hough/edges%d.tif' % index, "GTiff")
