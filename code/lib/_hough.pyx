@@ -55,10 +55,11 @@ def ll_angle(unsigned char[:, ::1] img,
 	return modgrad, modang
 
 def hough_lines(float[:, ::1] modgrad,
-						int size_columns, int size_rows,
-						float rho, float theta, int threshold_hough,
-						double min_theta, double max_theta,
-						int maxLines, float NOTDEF, int mode):
+				float[:, ::1] weight,
+				int size_columns, int size_rows,
+				float rho, float theta, int threshold_hough,
+				double min_theta, double max_theta,
+				int maxLines, float NOTDEF, int mode):
 	cdef int i, j, n, r, idx
 	cdef int base
 	cdef float irho = 1 / rho
@@ -98,18 +99,23 @@ def hough_lines(float[:, ::1] modgrad,
 						if mode == 0:
 							accum[(n + 1) * (numrho + 2) + r + 1] += 1
 						else:
-							accum[(n + 1) * (numrho + 2) + r + 1] += modgrad[i, j]
+							accum[(n + 1) * (numrho + 2) + r + 1] += weight[i, j]
 
 	""" stage 3.2. find local maximums """
+	cdef int epsilon = 3
+	cdef int check
 	for r in range(numrho):
 		for n in range(numangle):
 			base = (n + 1) * (numrho + 2) + r + 1
-			if accum[base] > threshold_hough and \
-				accum[base] > accum[base - 1] and \
-				accum[base] >= accum[base + 1] and \
-				accum[base] > accum[base - numrho - 2] and \
-				accum[base] >= accum[base + numrho + 2]:
-				_sort_buf.append((base, accum[base]))
+			if accum[base] > threshold_hough:
+				check = 0
+				for i in range(-epsilon, epsilon + 1, 1):
+					for j in range(-epsilon, epsilon + 1, 1):
+						if base + i * (numrho + 2) + j >= 0 and base + i * (numrho + 2) + j < (numangle + 2) * (numrho + 2):
+							if accum[base] < accum[base + i * (numrho + 2) + j]:
+								check += 1
+				if check == 0:
+					_sort_buf.append((base, accum[base]))
 	
 	""" stage 3.3. sort the detected lines by accumulator value"""
 	_sort_buf = sorted(_sort_buf, key=itemgetter(1))
