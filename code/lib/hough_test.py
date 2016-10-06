@@ -10,7 +10,7 @@ from osgeo import gdal_array, osr
 
 from _hough import hough_lines, ll_angle
 
-index = 2
+index = 9
 
 NOTDEF = -1
 
@@ -20,7 +20,10 @@ rows, cols = gray.shape[0], gray.shape[1]
 
 """ Calculating gradient angle and magnitude
 """
-modgrad, modang = ll_angle(gray, cols, rows, NOTDEF)
+# modgrad, modang = ll_angle(gray, cols, rows, NOTDEF)
+modgrad = cv2.Canny(gray, 100, 200)
+modgrad = modgrad.astype(np.float32)
+modgrad[modgrad < 255] = NOTDEF
 
 """ Surrounding suprression
 """
@@ -44,6 +47,9 @@ for i in range(kernel_size):
 
 # Calculate the DoG-
 DoG =  k2d_4sig - k2d_1sig
+blob = signal.convolve2d(modgrad, DoG, mode='same')
+gdal_array.SaveArray(blob, 'hough/blob%d.tif' % index, "GTiff")
+
 DoG_inverse = DoG
 DoG_inverse[DoG_inverse > 0] = 0
 
@@ -92,7 +98,7 @@ for i in range(rows):
 """
 mode = 1 # 0: Naive-Hough , otherwise: Weighted-Hough
 maxline = 10
-lines, accum = hough_lines(modgrad, weight, gray.shape[1], gray.shape[0], 1, np.pi / 180, 10, 0, np.pi, maxline, NOTDEF, mode)
+lines, accum = hough_lines(modgrad, weight, gray.shape[1], gray.shape[0], 1, np.pi / 180, 30, 0, np.pi, maxline, NOTDEF, mode)
 for line in lines:
 	rho, theta = line[0], line[1]
 
@@ -110,5 +116,5 @@ for line in lines:
 cv2.imwrite('hough/houghlines_%d.jpg' % index, img)
 gdal_array.SaveArray(accum, 'hough/accum%d.tif' % index, "GTiff")
 
-# gdal_array.SaveArray(modgrad, 'hough/edges%d.tif' % index, "GTiff")
-# gdal_array.SaveArray(weight, 'hough/weight%d.tif' % index, "GTiff")
+gdal_array.SaveArray(modgrad, 'hough/edges%d.tif' % index, "GTiff")
+gdal_array.SaveArray(weight, 'hough/weight%d.tif' % index, "GTiff")

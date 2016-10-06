@@ -7,7 +7,7 @@ from gdalconst import *
 from osgeo import gdal_array, osr
 
 from _motionEstBM import motionEstTSS
-from _sdssa import integral_calc, sdssa_calc
+from _sdssa import integral_calc, texture_abnormal_calc
 
 def motionEst(im, im_ref, pixels_per_cell, stepSize):
 	""" Computes motion vectors using 3-step search method
@@ -55,31 +55,28 @@ def motionEstTest():
 	cv2.imwrite("motion.png", im)
 
 def sdssaTest():
-	filepath = "H:/SIP5/temp/CT_Ocean/VNR20150117_PAN.tif"
+	filepath = "H:/SIP5/temp/CT_Island/VNR20150904_PAN.tif"
 	dataset = gdal.Open(filepath, GA_ReadOnly)
+	
 	size_column = dataset.RasterXSize
 	size_row = dataset.RasterYSize
 
 	band = dataset.GetRasterBand(1)
-	data = band.ReadAsArray(500, 500, 500, 500).astype(np.int)
-
-	cols = 500
-	rows = 500
+	data = band.ReadAsArray(0, 0, size_column, size_row).astype(np.int)
 
 	# calculate integral image
-	integral = np.zeros((rows, cols), dtype=np.float32)
-	integral_sqr = np.zeros((rows, cols), dtype=np.float32)
-
-	integral_calc(data, cols, rows, integral, integral_sqr)
-
-	# gdal_array.SaveArray(integral, 'integral.tif', "GTiff")
-	# gdal_array.SaveArray(integral_sqr, 'integral_sqr.tif', "GTiff")
+	integral = np.zeros((size_row, size_column), dtype=np.float64)
+	integral_sqr = np.zeros((size_row, size_column), dtype=np.float64)
+	integral_calc(data, size_column, size_row, integral, integral_sqr)
 
 	# calculate anomaly
-	rxd = np.zeros((rows, cols), dtype=np.float32)
-	sdssa_calc(data, cols, rows, 2, 2, integral, integral_sqr, rxd)
+	texture_abnormal = np.zeros((size_row, size_column), dtype=np.float32)
+	texture_abnormal_calc(data, size_column, size_row, 2, 2, integral, integral_sqr, texture_abnormal)
 
-	gdal_array.SaveArray(rxd, 'rxd.tif', "GTiff")
+	intensity_abnormal = np.zeros((size_row, size_column), dtype=np.float32)
+
+
+	gdal_array.SaveArray(texture_abnormal, 'rxd.tif', "GTiff")
 
 if __name__ == '__main__':
 	# motionEstTest()
