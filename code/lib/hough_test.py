@@ -10,7 +10,7 @@ from osgeo import gdal_array, osr
 
 from _hough import hough_lines, ll_angle
 
-index = 9
+index = 11
 
 NOTDEF = -1
 
@@ -21,7 +21,7 @@ rows, cols = gray.shape[0], gray.shape[1]
 """ Calculating gradient angle and magnitude
 """
 # modgrad, modang = ll_angle(gray, cols, rows, NOTDEF)
-modgrad = cv2.Canny(gray, 100, 200)
+modgrad = cv2.Canny(gray, 1, 10)
 modgrad = modgrad.astype(np.float32)
 modgrad[modgrad < 255] = NOTDEF
 
@@ -29,7 +29,7 @@ modgrad[modgrad < 255] = NOTDEF
 """
 sigma = 1.5
 kernel_size = 25
-alpha = 10
+alpha = 1
 
 # Get 1d Gaussian kernel
 k1d_1sig = cv2.getGaussianKernel(kernel_size, sigma)
@@ -92,13 +92,13 @@ for i in range(cols):
 weight = np.zeros((rows, cols), dtype=np.float32)
 for i in range(rows):
 	for j in range(cols):
-		weight[i, j] = pow(cos(atan((T1[i, j] - T2[i, j] - T3[i, j]) / modgrad[i, j])), 10)
+		weight[i, j] = pow(atan((T1[i, j] - T2[i, j] - T3[i, j]) / modgrad[i, j]), alpha)
 
 """ Hough line transform
 """
 mode = 1 # 0: Naive-Hough , otherwise: Weighted-Hough
 maxline = 10
-lines, accum = hough_lines(modgrad, weight, gray.shape[1], gray.shape[0], 1, np.pi / 180, 30, 0, np.pi, maxline, NOTDEF, mode)
+lines, accum = hough_lines(modgrad, weight, gray.shape[1], gray.shape[0], 1, np.pi / 180, 10, 0, np.pi, maxline, NOTDEF, mode)
 for line in lines:
 	rho, theta = line[0], line[1]
 
