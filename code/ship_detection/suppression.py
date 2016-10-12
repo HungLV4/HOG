@@ -38,18 +38,20 @@ def inhibkernel2D(sigma, k1, k2):
 	else:
 		return 0
 
-def calc_inhibition(modgrad, modang, sigma, alpha, k1, k2, rows, cols):
+def calc_inhibition(modgrad, modang, sigma, alpha, k1, k2, rows, cols, mode = 1):
 	w = inhibkernel2D(sigma, k1, k2)
 	
-	# t = signal.convolve2d(modgrad, w, mode='same')
-	t = calc_anisotropic_inhibterm(modgrad, w, modang, cols, rows, w.shape[1], w.shape[0])
-	
-	b = abs(modgrad) - alpha * t
+	term = calc_anisotropic_inhibterm(modgrad, w, modang, cols, rows, w.shape[1], w.shape[0], mode)
+	contour = abs(modgrad) - alpha * term
+	contour[contour < 0] = 0 # set every negative value to 0 (H-function)
 
-	# set every negative value to 0 (H-function)
-	b[b < 0] = 0
+	slope = np.zeros((rows, cols))
+	for i in range(rows):
+		for j in range(cols):
+			if modgrad[i, j] > 0:
+				slope[i, j] = atan(term[i, j] / modgrad[i, j])
 
-	return b, t
+	return contour, term, slope
 
 if __name__ == '__main__':
 	NOTDEF = 0
@@ -57,21 +59,26 @@ if __name__ == '__main__':
 	k1 = 1
 	k2 = 4
 	alpha = 2
+	
+	# mode: 0: isotropic, 1: anisotropic, 2: invert anisotropic
+	mode = 0
+	
+	index = 7
 
 	# read image
-	img = cv2.imread("hough/hough7.png")
+	img = cv2.imread("data/ship%d.png" %index)
 	gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 	rows, cols = gray.shape[0], gray.shape[1]
 
 	# calculate the gradient magnitude and orientation
 	modgrad, modang = ll_angle(gray, cols, rows, NOTDEF)
-
-	# calculation of the surround inhibition and inhibition term
-	filtered, term = calc_inhibition(modgrad, modang, sigma, alpha, k1, k2, rows, cols)
 	
-	gdal_array.SaveArray(modgrad, 'hough/edges.tif', "GTiff")
-	gdal_array.SaveArray(filtered, 'hough/wfiltered.tif', "GTiff")
-	# gdal_array.SaveArray(term, 'hough/term.tif', "GTiff")
+	# calculation of the surround inhibition and inhibition term
+	filtered, term, slope = calc_inhibition(modgrad, modang, sigma, alpha, k1, k2, rows, cols, mode)
+	# gdal_array.SaveArray(filtered, 'data/ship%d_%d.tif' % (index, mode), "GTiff")
+	gdal_array.SaveArray(slope, 'data/ship%d_s.tif' % index, "GTiff")
+	
+	# gdal_array.SaveArray(modgrad, 'data/ship%d_e.tif' % index, "GTiff")
 
 
 

@@ -11,13 +11,17 @@ def calc_anisotropic_inhibterm(float[:, ::1] x,
 						double [:, ::1] w,
 						float [:, ::1] o,
 						int size_col, int size_row,
-						int k_size_col, int k_size_row):
+						int k_size_col, int k_size_row,
+						int mode):
 	"""
 	Calculate the anisotropic suppression surround term
 	Input:
 		x: gradient madnitude
 		w: kernel
 		o: gradient orientation
+		mode = 0: isotropic suppresion
+			 = 1: anisotropic suppression
+			 = 2: invert anisotropic suppression
 	"""
 	
 	# initialize response signal
@@ -44,5 +48,10 @@ def calc_anisotropic_inhibterm(float[:, ::1] x,
 
 						# ignore input samples which are out of bound
 						if ii >= 0 and ii < size_row and jj >= 0 and jj < size_col:
-							response[i, j] += x[ii, jj] * w[mm, nn] * (1 - fabs(cos(o[i, j] - o[ii, jj])))
+							if mode == 1:
+								response[i, j] += x[ii, jj] * w[mm, nn] * fabs(cos(o[i, j] - o[ii, jj]))
+							elif mode == 0:
+								response[i, j] += x[ii, jj] * w[mm, nn]
+							elif mode == 2:
+								response[i, j] += x[ii, jj] * w[mm, nn] * (1 - fabs(cos(o[i, j] - o[ii, jj])))
 	return response
