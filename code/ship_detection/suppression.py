@@ -4,11 +4,6 @@ import cv2
 from operator import itemgetter
 from math import atan2, cos, pow, atan, floor
 
-import gdal
-from gdalconst import *
-from osgeo import gdal_array, osr
-
-from _hough import hough_lines, ll_angle
 from _anisotropic import calc_anisotropic_inhibterm
 
 def gaussian2d(n, sigma):
@@ -49,7 +44,7 @@ def calc_inhibition(modgrad, modang, sigma, alpha, k1, k2, rows, cols, mode = 1)
 	for i in range(rows):
 		for j in range(cols):
 			if modgrad[i, j] > 0:
-				slope[i, j] = atan(term[i, j] / modgrad[i, j])
+				slope[i, j] = cos(atan(term[i, j] / modgrad[i, j]))
 
 	return contour, term, slope
 

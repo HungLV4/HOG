@@ -6,16 +6,18 @@ import gdal
 from gdalconst import *
 from osgeo import gdal_array, osr
 
-from _motionEstBM import motionEstTSS
 from _sdssa import integral_calc, texture_abnormal_calc
+from _hough import ll_angle
 
 from suppression import calc_inhibition
+
+NOTDEF = -1
 
 def calc_sdssa_intensity(data, hist, size_row, size_column):
 	intensity_abnormal = np.zeros((size_row, size_column), dtype=np.float64)
 	for i in range(size_row):
 		for j in range(size_column):
-			if hist[data[i, j] - 1] > 0:
+			if data[i, j] > 0 and hist[data[i, j] - 1] > 0:
 				intensity_abnormal[i, j] = 1 / float(hist[data[i, j] - 1])
 	return intensity_abnormal
 
@@ -71,44 +73,62 @@ def calc_suppression_weight(modgrad, modang, rows, cols, mode):
 
 	return slope
 
-def sdssa():
-	index = 6
-
+def process(index, wmode = 0):
+	"""
+	Input:
+		index: input file index
+		wmode: 
+			0: SDSSA weight
+			1: Suppression weight
+			otherwise: non-weigth
+	"""
 	# reading data
-	filepath = "data/%d.tif" % index
+	filepath = "data/ship%d.tif" % index
 	dataset = gdal.Open(filepath, GA_ReadOnly)
 	
 	size_column = dataset.RasterXSize
 	size_row = dataset.RasterYSize
-	total_pixels = size_row * size_column
-
+	
 	band = dataset.GetRasterBand(1)
 	data = band.ReadAsArray(0, 0, size_column, size_row).astype(np.int)
 
+	# total_pixels = size_row * size_column
+	total_pixels = sum(sum(i > 0 for i in data))
+
 	# Calculate the histogram of image
 	binwidth = 1
-	hist, bin_edges = np.histogram(data, bins=np.arange(0, np.max(data) + binwidth, binwidth))
+	hist, bin_edges = np.histogram(data, bins=np.arange(1, np.max(data) + 2 * binwidth, binwidth))
 
-	# Calculate intensity abnormal
+	# Calculate sdssa intensity abnormal
 	intensity_abnormal = calc_sdssa_intensity(data, hist, size_row, size_column)
-
-	# Calculate texture abnormal
-	texture_abnormal = calc_sdssa_texture(data, size_row, size_column)
-	
-	# Normalizing
 	intensity_abnormal = intensity_abnormal / np.max(intensity_abnormal)
-	texture_abnormal = texture_abnormal / np.max(texture_abnormal)
 	
-	# Calculate the weighting values
-	Cm, Ce, Cd = calc_sdssa_weight(hist, total_pixels)
-	slope = calc_suppression_weight(texture_abnormal, None, size_row, size_column, 0)
+	if wmode != 1:
+		# Calculate sdssa texture abnormal
+		texture_abnormal = calc_sdssa_texture(data, size_row, size_column)
+		texture_abnormal = texture_abnormal / np.max(texture_abnormal)
 
-	# Adding weight
-	# texture_abnormal = slope * texture_abnormal
-	# intensity_abnormal = intensity_abnormal * (1 - slope)
-	
-	gdal_array.SaveArray(texture_abnormal * slope + intensity_abnormal * (1 - slope), 'data/suppression%d.tif' % index, "GTiff")
-	gdal_array.SaveArray(texture_abnormal * Cd + intensity_abnormal * (1 - Cd), 'data/sdssa%d.tif' % index, "GTiff")
+		# Calculate weight
+		Cm, Ce, Cd = calc_sdssa_weight(hist, total_pixels)
+		
+		if wmode == 0:
+			texture_abnormal = Cd * texture_abnormal
+			intensity_abnormal = intensity_abnormal * (1 - Cd)
+		
+		gdal_array.SaveArray(texture_abnormal + intensity_abnormal, 'data/ship%d_%d.tif' % (index, wmode), "GTiff")
+	elif wmode == 1:
+		# Calculate gradient
+		modgrad, modang = ll_angle(data, size_column, size_row, NOTDEF, 0)
+		modgrad = modgrad / np.max(modgrad)
+
+		# Calculate weight
+		slope = calc_suppression_weight(modgrad, modang, size_row, size_column, 1)
+		# gdal_array.SaveArray(slope, 'data/ship%d_slope.tif' % (index), "GTiff")
+		
+		modgrad = slope * modgrad
+		intensity_abnormal = intensity_abnormal * (1 - slope)
+		gdal_array.SaveArray(modgrad + intensity_abnormal, 'data/ship%d_%d.tif' % (index, wmode), "GTiff")
 
 if __name__ == '__main__':
-	sdssa()
+	for i in range(19, 25):
+		process(i, 2)

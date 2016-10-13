@@ -7,13 +7,16 @@ cimport numpy as np
 from operator import itemgetter
 from libc.math cimport sqrt, floor, atan2, sin, cos, M_PI, round
 
-def ll_angle(unsigned char[:, ::1] img, 
+def ll_angle(long[:, ::1] img, 
 			int size_columns, int size_rows,
-			float NOTDEF):
+			float NOTDEF, int thres_mode):
 	"""
 	Calculating gradient magnitude and level-line angle
 	Input:
 		img: original 8-bit image
+		thres_mode:
+			1: use gradient magnitude threshold 
+			0: not use
 	Output:
 		modgrad: gradient magnitude image
 		modang: gradient angle image
@@ -47,7 +50,7 @@ def ll_angle(unsigned char[:, ::1] img,
 					norm2 = gx * gx + gy * gy
 					# gradient norm
 					norm = sqrt(norm2 / 4.0)
-					if norm <= threshold_grad:
+					if norm <= threshold_grad and thres_mode == 1:
 						modgrad[i, j] = NOTDEF
 					else:
 						modgrad[i, j] = norm
