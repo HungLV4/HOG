@@ -49,6 +49,9 @@ def calc_inhibition(modgrad, modang, sigma, alpha, k1, k2, rows, cols, mode = 1)
 	return contour, term, slope
 
 if __name__ == '__main__':
+	"""
+	Testing purpose
+	"""
 	NOTDEF = 0
 	sigma = 1.5
 	k1 = 1
@@ -70,10 +73,6 @@ if __name__ == '__main__':
 	
 	# calculation of the surround inhibition and inhibition term
 	filtered, term, slope = calc_inhibition(modgrad, modang, sigma, alpha, k1, k2, rows, cols, mode)
-	# gdal_array.SaveArray(filtered, 'data/ship%d_%d.tif' % (index, mode), "GTiff")
-	gdal_array.SaveArray(slope, 'data/ship%d_s.tif' % index, "GTiff")
-	
-	# gdal_array.SaveArray(modgrad, 'data/ship%d_e.tif' % index, "GTiff")
 
 
 
