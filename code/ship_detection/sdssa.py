@@ -11,13 +11,33 @@ from _hough import ll_angle
 
 from suppression import calc_inhibition
 
+import csv
+import subprocess
+
 NOTDEF = -1
 
-def calc_sdssa_intensity(data, hist, size_row, size_column):
+def crop_by_xy(scene_name):
+	offset_x = 256
+	offset_y = 256
+
+	csv_path = "data/%s.csv" % scene_name
+	img_path = "data/ori/%s.tif" % scene_name
+	with open(csv_path, 'rb') as csvfile:
+		reader = csv.reader(csvfile, delimiter=',')
+		index = 0
+		for row in reader:
+			x = int(row[0])
+			y = int(row[1])
+			out_path = "data/crop/%s_%d.tif" % (scene_name, index)
+			subprocess.call("gdal_translate -srcwin %d %d %d %d -of Gtiff %s %s" % (x, y, offset_x, offset_y, img_path, out_path), shell=True)
+
+			index += 1
+
+def calc_sdssa_intensity(data, hist, binwidth, size_row, size_column):
 	intensity_abnormal = np.zeros((size_row, size_column), dtype=np.float64)
 	for i in range(size_row):
 		for j in range(size_column):
-			if data[i, j] > 0 and hist[data[i, j] - 1] > 0:
+			if data[i, j] > 0 and hist[(data[i, j] - 1) / binwidth] > 0:
 				intensity_abnormal[i, j] = 1 / float(hist[data[i, j] - 1])
 	return intensity_abnormal
 
@@ -73,17 +93,17 @@ def calc_suppression_weight(modgrad, modang, rows, cols, mode):
 
 	return slope
 
-def process(index, wmode = 0):
+def process(filename, wmode = 0):
 	"""
 	Input:
-		index: input file index
+		filename: input file index
 		wmode: 
 			0: SDSSA weight
 			1: Suppression weight
 			otherwise: non-weigth
 	"""
 	# reading data
-	filepath = "data/ship%d.tif" % index
+	filepath = "data/crop/%s.tif" % filename
 	dataset = gdal.Open(filepath, GA_ReadOnly)
 	
 	size_column = dataset.RasterXSize
@@ -100,7 +120,7 @@ def process(index, wmode = 0):
 	hist, bin_edges = np.histogram(data, bins=np.arange(1, np.max(data) + 2 * binwidth, binwidth))
 
 	# Calculate sdssa intensity abnormal
-	intensity_abnormal = calc_sdssa_intensity(data, hist, size_row, size_column)
+	intensity_abnormal = calc_sdssa_intensity(data, hist, binwidth, size_row, size_column)
 	intensity_abnormal = intensity_abnormal / np.max(intensity_abnormal)
 	
 	if wmode != 1:
@@ -110,12 +130,13 @@ def process(index, wmode = 0):
 
 		# Calculate weight
 		Cm, Ce, Cd = calc_sdssa_weight(hist, total_pixels)
+		print Cm, Ce, Cd
 		
 		if wmode == 0:
 			texture_abnormal = Cd * texture_abnormal
 			intensity_abnormal = intensity_abnormal * (1 - Cd)
 		
-		gdal_array.SaveArray(texture_abnormal + intensity_abnormal, 'data/ship%d_%d.tif' % (index, wmode), "GTiff")
+		gdal_array.SaveArray(texture_abnormal + intensity_abnormal, 'results/%s_m%d.tif' % (filename, wmode), "GTiff")
 	elif wmode == 1:
 		# Calculate gradient
 		modgrad, modang = ll_angle(data, size_column, size_row, NOTDEF, 0)
@@ -129,6 +150,18 @@ def process(index, wmode = 0):
 		intensity_abnormal = intensity_abnormal * (1 - slope)
 		gdal_array.SaveArray(modgrad + intensity_abnormal, 'data/ship%d_%d.tif' % (index, wmode), "GTiff")
 
+def process_by_scene(scene_name):
+	csv_path = "data/%s.csv" % scene_name
+	with open(csv_path, 'rb') as csvfile:
+		reader = csv.reader(csvfile, delimiter=',')
+		data = list(reader)
+		for index in range(len(data)):
+			filename = "%s_%d" % (scene_name, index)
+			process(filename)
+
 if __name__ == '__main__':
-	for i in range(19, 25):
-		process(i, 2)
+	filelist = ["VNR20150117_PAN", "VNR20150202_PAN", "VNR20150303_PAN", "VNR20150609_PAN"]
+	# filelist = ["VNR20150609_PAN"]
+	for scene_name in filelist:
+		# crop_by_xy(scene_name)
+		process_by_scene(scene_name)
