@@ -21,13 +21,14 @@ def crop_by_xy(scene_name):
 	offset_y = 256
 
 	csv_path = "data/%s.csv" % scene_name
-	img_path = "data/ori/%s.tif" % scene_name
+	img_path = "data/ori/CSG/%s.tif" % scene_name
 	with open(csv_path, 'rb') as csvfile:
 		reader = csv.reader(csvfile, delimiter=',')
 		index = 0
 		for row in reader:
-			x = int(row[0])
-			y = int(row[1])
+			print scene_name, index
+			x = int(row[0]) - 1
+			y = int(row[1]) - 1
 			out_path = "data/crop/%s_%d.tif" % (scene_name, index)
 			subprocess.call("gdal_translate -srcwin %d %d %d %d -of Gtiff %s %s" % (x, y, offset_x, offset_y, img_path, out_path), shell=True)
 
@@ -151,9 +152,12 @@ def process(filename, wmode = 0):
 		abnormal = texture_abnormal + intensity_abnormal
 		# gdal_array.SaveArray(abnormal, 'results/%s_m%d.tif' % (filename, wmode), "GTiff")
 		
-		# threshold the image
+		"""
+		Threshold the image
+		"""
 		binary_img = auto_threshold(abnormal, Cd, wmode)
 		cv2.imwrite('results/%s_m%d.png' % (filename, wmode), binary_img)
+
 	elif wmode == 1:
 		# Calculate gradient
 		modgrad, modang = ll_angle(data, size_column, size_row, NOTDEF, 0)
@@ -164,7 +168,7 @@ def process(filename, wmode = 0):
 		
 		modgrad = slope * modgrad
 		intensity_abnormal = intensity_abnormal * (1 - slope)
-		gdal_array.SaveArray(modgrad + intensity_abnormal, 'data/ship%d_%d.tif' % (index, wmode), "GTiff")
+		gdal_array.SaveArray(modgrad + intensity_abnormal, 'results/ship%d_%d.tif' % (index, wmode), "GTiff")
 
 def process_by_scene(scene_name, wmode):
 	csv_path = "data/%s.csv" % scene_name
@@ -176,7 +180,19 @@ def process_by_scene(scene_name, wmode):
 			process(filename, wmode)
 
 if __name__ == '__main__':
-	filelist = ["VNR20150117_PAN", "VNR20150202_PAN", "VNR20150303_PAN", "VNR20150609_PAN"]
-	# filelist = ["VNR20150609_PAN"]
+	filelist = ["VNR20150117_PAN", "VNR20150202_PAN", 
+				"VNR20150303_PAN", "VNR20150417_PAN", 
+				"VNR20150508_PAN", "VNR20150609_PAN", 
+				"VNR20150726_PAN", "VNR20150816_PAN", 
+				"VNR20150904_PAN", 
+				"VNR20150117_PAN_IS", "VNR20150202_PAN_IS", 
+				"VNR20150303_PAN_IS", "VNR20150417_PAN_IS", 
+				"VNR20150508_PAN_IS", "VNR20150609_PAN_IS", 
+				"VNR20150726_PAN_IS", "VNR20150816_PAN_IS", 
+				"VNR20150904_PAN_IS",
+				"VNR20150415_PAN", "VNR20150628_PAN", "VNR20150902_PAN"]
+	
+	# filelist = ["VNR20150415_PAN", "VNR20150628_PAN", "VNR20150902_PAN"]
 	for scene_name in filelist:
+		# crop_by_xy(scene_name)
 		process_by_scene(scene_name, 0)

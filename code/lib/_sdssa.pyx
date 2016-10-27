@@ -3,7 +3,7 @@
 # cython: wraparound=False
 
 import numpy as np
-from libc.math cimport sqrt
+from libc.math cimport sqrt, fabs
 
 cimport numpy as cnp
 
