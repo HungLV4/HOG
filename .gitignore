@@ -15,3 +15,4 @@
 *.pgm
 code/ship_detection/data/1.pgm.txt
 *.xml
+*.tif
