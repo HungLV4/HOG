@@ -71,9 +71,7 @@ def calc_sdssa_weight(hist, total_pixels):
 			Cm = i
 		if cumm / total_pixels >= 1 - P2 and Ce == -1:
 			Ce = i
-	Cd = float(Cm) / Ce
-
-	return Cm, Ce, Cd
+	return Cm, Ce
 
 def calc_suppression_weight(modgrad, modang, rows, cols, mode):
 	"""
@@ -94,12 +92,15 @@ def calc_suppression_weight(modgrad, modang, rows, cols, mode):
 
 	return slope
 
-def auto_threshold(abnormal, weight, wmode = 0):
+def auto_threshold_sdssa(abnormal, weight):
 	binary_img = np.zeros(abnormal.shape, dtype=np.uint8)
 	if wmode != 1:
 		binary_img[abnormal > weight] = 255
 
 	return binary_img
+
+def auto_threshold_supp(abnormal, slope):
+	pass
 
 def process(filename, wmode = 0):
 	"""
@@ -110,6 +111,8 @@ def process(filename, wmode = 0):
 			1: Suppression weight
 			otherwise: non-weigth
 	"""
+	print "Processing", filename
+
 	# reading data
 	filepath = "data/crop/%s.tif" % filename
 	dataset = gdal.Open(filepath, GA_ReadOnly)
@@ -121,7 +124,7 @@ def process(filename, wmode = 0):
 	data = band.ReadAsArray(0, 0, size_column, size_row).astype(np.int)
 
 	total_pixels = sum(sum(i > 0 for i in data))
-
+	
 	"""
 	Calculating abnormality
 	"""
@@ -142,22 +145,15 @@ def process(filename, wmode = 0):
 		texture_abnormal = texture_abnormal / np.max(texture_abnormal)
 
 		# Calculate weight
-		Cm, Ce, Cd = calc_sdssa_weight(hist, total_pixels)
-		print filename, Cd
+		Cm, Ce = calc_sdssa_weight(hist, total_pixels)
+		Cd = float(Cm) / Ce
 
 		if wmode == 0:
 			texture_abnormal = Cd * texture_abnormal
 			intensity_abnormal = intensity_abnormal * (1 - Cd)
 		
 		abnormal = texture_abnormal + intensity_abnormal
-		# gdal_array.SaveArray(abnormal, 'results/%s_m%d.tif' % (filename, wmode), "GTiff")
-		
-		"""
-		Threshold the image
-		"""
-		binary_img = auto_threshold(abnormal, Cd, wmode)
-		cv2.imwrite('results/%s_m%d.png' % (filename, wmode), binary_img)
-
+		binary_img = auto_threshold_sdssa(abnormal, Cd)
 	elif wmode == 1:
 		# Calculate gradient
 		modgrad, modang = ll_angle(data, size_column, size_row, NOTDEF, 0)
@@ -168,7 +164,21 @@ def process(filename, wmode = 0):
 		
 		modgrad = slope * modgrad
 		intensity_abnormal = intensity_abnormal * (1 - slope)
-		gdal_array.SaveArray(modgrad + intensity_abnormal, 'results/ship%d_%d.tif' % (index, wmode), "GTiff")
+
+		abnormal = modgrad + intensity_abnormal
+		binary_img = auto_threshold_supp(abnormal, slope)
+	
+	# noise removal
+	kernel = np.ones((2, 2), np.uint8)
+	binary_img = cv2.morphologyEx(binary_img, cv2.MORPH_OPEN, kernel, iterations = 2)
+
+	# connected compponents
+	kernel = np.ones((3, 3), np.uint8)
+	binary_img = cv2.morphologyEx(binary_img, cv2.MORPH_CLOSE, kernel, iterations = 2)
+
+	# output
+	cv2.imwrite('results/%d/%s.png' % (wmode, filename), binary_img)
+	gdal_array.SaveArray(abnormal, 'results/%d/%s.tif' % (wmode, filename), "GTiff")
 
 def process_by_scene(scene_name, wmode):
 	csv_path = "data/%s.csv" % scene_name
@@ -192,7 +202,12 @@ if __name__ == '__main__':
 				"VNR20150904_PAN_IS",
 				"VNR20150415_PAN", "VNR20150628_PAN", "VNR20150902_PAN"]
 	
-	# filelist = ["VNR20150415_PAN", "VNR20150628_PAN", "VNR20150902_PAN"]
+	filelist = ["VNR20150117_PAN", "VNR20150202_PAN", 
+				"VNR20150303_PAN", "VNR20150417_PAN", 
+				"VNR20150508_PAN", "VNR20150609_PAN", 
+				"VNR20150726_PAN", "VNR20150816_PAN", 
+				"VNR20150904_PAN", 
+				"VNR20150415_PAN", "VNR20150628_PAN"]
 	for scene_name in filelist:
 		# crop_by_xy(scene_name)
-		process_by_scene(scene_name, 0)
+		process_by_scene(scene_name, 1)
