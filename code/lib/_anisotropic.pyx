@@ -22,6 +22,7 @@ def calc_anisotropic_inhibterm(float[:, ::1] x,
 		mode = 0: isotropic suppresion
 			 = 1: anisotropic suppression
 			 = 2: invert anisotropic suppression
+			 = 3: custom
 	"""
 	
 	# initialize response signal
@@ -54,4 +55,6 @@ def calc_anisotropic_inhibterm(float[:, ::1] x,
 								response[i, j] += x[ii, jj] * w[mm, nn]
 							elif mode == 2:
 								response[i, j] += x[ii, jj] * w[mm, nn] * (1 - fabs(cos(o[i, j] - o[ii, jj])))
+							elif mode == 3:
+								response[i, j] += x[ii, jj] * w[mm, nn] * (x[ii, jj] - x[i, j]) * (1 - fabs(cos(o[i, j] - o[ii, jj])))
 	return response
