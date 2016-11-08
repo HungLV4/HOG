@@ -20,8 +20,8 @@ def crop_by_xy(scene_name):
 	offset_x = 256
 	offset_y = 256
 
-	csv_path = "data/%s.csv" % scene_name
-	img_path = "data/ori/CT_Ocean/%s.tif" % scene_name
+	csv_path = "data/csv/%s.csv" % scene_name
+	img_path = "data/ori/CSG/%s.png" % scene_name
 	with open(csv_path, 'rb') as csvfile:
 		reader = csv.reader(csvfile, delimiter=',')
 		index = 0
@@ -29,8 +29,8 @@ def crop_by_xy(scene_name):
 			print scene_name, index
 			x = int(row[0]) - 1
 			y = int(row[1]) - 1
-			out_path = "data/crop/%s_%d.tif" % (scene_name, index)
-			subprocess.call("gdal_translate -srcwin %d %d %d %d -of Gtiff %s %s" % (x, y, offset_x, offset_y, img_path, out_path), shell=True)
+			out_path = "data/crop/vis/%s_%d.png" % (scene_name, index)
+			subprocess.call("gdal_translate -srcwin %d %d %d %d -of png %s %s" % (x, y, offset_x, offset_y, img_path, out_path), shell=True)
 
 			index += 1
 
@@ -101,10 +101,10 @@ def auto_threshold_sdssa(abnormal, weight):
 def auto_threshold_supp(abnormal, slope):
 	pass
 
-def calc_binary_img(filename, wmode = 0):
+def calc_binary_img(data, size_column, size_row, wmode = 0):
 	"""
 	Input:
-		filename: input file index
+		data: input data file
 		wmode: 
 			0: SDSSA weight
 			1: Suppression weight
@@ -112,19 +112,8 @@ def calc_binary_img(filename, wmode = 0):
 	Output:
 		Binary mask
 	"""
-	print "Processing", filename
-	
 	binwidth = 1
 	NOTDEF = 0
-
-	# reading data
-	filepath = "data/crop/%s.tif" % filename
-	dataset = gdal.Open(filepath, GA_ReadOnly)
-	size_column = dataset.RasterXSize
-	size_row = dataset.RasterYSize
-
-	band = dataset.GetRasterBand(1)
-	data = band.ReadAsArray(0, 0, size_column, size_row).astype(np.int)
 
 	total_pixels = sum(sum(i > 0 for i in data))
 	
@@ -177,15 +166,16 @@ def calc_binary_img(filename, wmode = 0):
 def get_list_contours(binary_img):
 	temp = binary_img.copy()
 	_, contours, _ = cv2.findContours(temp, cv2.RETR_LIST, 2)
-	objects = []
+	
+	rotated_bounding_boxs = []
 	for cnt in contours:
 		rect = cv2.minAreaRect(cnt)
 		box = cv2.boxPoints(rect)
 		box = np.int0(box)
 
-		objects.append(box)
+		rotated_bounding_boxs.append(box)
 
-	return objects
+	return rotated_bounding_boxs
 
 def draw_candidates(binary_img, contours, color):
 	vis = cv2.cvtColor(binary_img, cv2.COLOR_GRAY2BGR)		
@@ -194,10 +184,15 @@ def draw_candidates(binary_img, contours, color):
 
 	return vis
 
-def no_name(binary_img):
+def refine_segment(data, rbbs):
 	"""
-	Lines detection
+	Input:
+		data: real image
+		rbbs: list of rotated bouding box
+	Ouput:
+		new binary mask
 	"""
+
 	# edges detection with no threshold
 	# edges, _ = ll_angle(binary_img.astype(int), size_column, size_row, NOTDEF, 0)
 	# hmode = 0 # Naive Hough
@@ -219,6 +214,7 @@ def no_name(binary_img):
 	# 	cv2.line(binary_img, (x1, y1), (x2, y2), (255, 0, 255), 1)
 	# gdal_array.SaveArray(edges, 'results/%d/%s_e.tif' % (wmode, filename), "GTiff")
 	# gdal_array.SaveArray(hs.astype(int), 'results/%d/%s_hs.tif' % (wmode, filename), "GTiff")
+	pass
 
 def process_by_scene(scene_name):
 	wmode = 0 # binary image calculation mode
@@ -228,21 +224,31 @@ def process_by_scene(scene_name):
 		reader = csv.reader(csvfile, delimiter=',')
 		data = list(reader)
 		for index in range(len(data)):
+			# reading data
 			filename = "%s_%d" % (scene_name, index)
+			print "Processing", filename
+			filepath = "data/crop/%s.tif" % filename
+			
+			dataset = gdal.Open(filepath, GA_ReadOnly)
+			size_column = dataset.RasterXSize
+			size_row = dataset.RasterYSize
+
+			band = dataset.GetRasterBand(1)
+			data = band.ReadAsArray(0, 0, size_column, size_row).astype(np.int)
 			
 			""" 
 				Stage 1: coarse candidates selection using abnormality threshold
 			"""
-			binary_img = calc_binary_img(filename, wmode)
-			contours = get_list_contours(binary_img)
-
-			vis = draw_candidates(binary_img, contours, (0, 0, 255))
-			cv2.imwrite('results/1/%d/%s.png' % (wmode, filename), vis)
+			binary_img = calc_binary_img(data, size_column, size_row, wmode)
+			rbbs = get_list_contours(binary_img)
 
 			"""
 				Stage 2: refine candidates using shape information
 			"""
-			# doing something
+			refine_segment(data, rbbs)
+
+			# vis = draw_candidates(binary_img, contours, (0, 0, 255))
+			# cv2.imwrite('results/1/%d/%s.png' % (wmode, filename), vis)
 
 if __name__ == '__main__':
 	filelist = ["VNR20150117_PAN", "VNR20150202_PAN",
@@ -257,12 +263,7 @@ if __name__ == '__main__':
 				"VNR20150904_PAN_IS",
 				"VNR20150415_PAN", "VNR20150628_PAN", "VNR20150902_PAN"]
 	
-	filelist = ["VNR20150117_PAN", "VNR20150202_PAN",
-				"VNR20150303_PAN", "VNR20150417_PAN",
-				"VNR20150508_PAN", "VNR20150609_PAN",
-				"VNR20150726_PAN", "VNR20150816_PAN",
-				"VNR20150904_PAN",
-				"VNR20150415_PAN", "VNR20150628_PAN"]
+	filelist = ["VNR20150415_PAN", "VNR20150628_PAN", "VNR20150902_PAN"]
 	
 	for scene_name in filelist:
 		# crop_by_xy(scene_name)
