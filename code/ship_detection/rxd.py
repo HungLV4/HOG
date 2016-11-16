@@ -33,7 +33,7 @@ def calc_rxd(data, bands, size_column, size_row):
 		rxd = np.zeros(num_pixels)
 		for i in range(num_pixels):
 			signal = GG[:, i] - avg
-			rxd[i] = np.dot(np.dot(signal, M_invert), signal.transpose())
+			rxd[i] = np.dot(np.dot(signal, M_i), signal.transpose())
 
 		return rxd
 
