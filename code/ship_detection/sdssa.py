@@ -10,27 +10,38 @@ from _sdssa import integral_calc, texture_abnormal_calc
 from _hough import ll_angle, hough_lines
 
 from suppression import calc_inhibition
+from rxd import calc_rxd
 
 import csv
 import subprocess
 
 NOTDEF = -1
 
+def crop_by_shp(scene_name):
+	shp_path = "../../../../../../data/ROI_SHP/CSG.shp"
+	img_path = "../../../../../../data/VNREDSat/%s/%s_PAN.tif" % (scene_name, scene_name)
+	out_path = "data/ori/CSG/%s_PAN.tif" % scene_name
+	
+	subprocess.call("gdalwarp -q -cutline %s -crop_to_cutline -of GTiff %s %s" % (shp_path, img_path, out_path), shell=True)
+
 def crop_by_xy(scene_name):
 	offset_x = 256
 	offset_y = 256
 
 	csv_path = "data/csv/%s.csv" % scene_name
-	img_path = "data/ori/CSG/%s.png" % scene_name
+	img_path = "data/ori/CSG/%s_PXS.tif" % scene_name
 	with open(csv_path, 'rb') as csvfile:
 		reader = csv.reader(csvfile, delimiter=',')
 		index = 0
 		for row in reader:
-			print scene_name, index
 			x = int(row[0]) - 1
 			y = int(row[1]) - 1
-			out_path = "data/crop/vis/%s_%d.png" % (scene_name, index)
-			subprocess.call("gdal_translate -srcwin %d %d %d %d -of png %s %s" % (x, y, offset_x, offset_y, img_path, out_path), shell=True)
+			d = int(row[2])
+
+			if d == 1 or d == 2 or d == 3 or d  == 6:
+				print scene_name, index
+				out_path = "data/crop/D%d/%s_%d_PXS.tif" % (d, scene_name, index)
+				subprocess.call("gdal_translate -srcwin %d %d %d %d -of Gtiff %s %s" % (x, y, offset_x, offset_y, img_path, out_path), shell=True)
 
 			index += 1
 
@@ -92,23 +103,25 @@ def calc_suppression_weight(modgrad, modang, rows, cols, mode):
 
 	return contours, slope
 
-def auto_threshold_sdssa(abnormal, weight):
+def auto_threshold_sv(abnormal, threshold):
+	"""
+	Threshold using Single Value
+	"""
 	binary_img = np.zeros(abnormal.shape, dtype=np.uint8)
-	binary_img[abnormal > weight] = 255
+	binary_img[abnormal > threshold] = 255
 
 	return binary_img
 
 def auto_threshold_supp(abnormal, slope):
 	pass
 
-def calc_binary_img(data, size_column, size_row, wmode = 0):
+def calc_ssa(data, size_column, size_row, wmode):
 	"""
 	Input:
 		data: input data file
 		wmode: 
 			0: SDSSA weight
 			1: Suppression weight
-			otherwise: non-weigth
 	Output:
 		Binary mask
 	"""
@@ -128,7 +141,7 @@ def calc_binary_img(data, size_column, size_row, wmode = 0):
 	# Calculate sdssa intensity abnormal
 	intensity_abnormal = calc_sdssa_intensity(data, hist, binwidth, size_row, size_column)
 	
-	if wmode != 1:
+	if wmode == 0:
 		# Calculate sdssa texture abnormal
 		texture_abnormal = calc_sdssa_texture(data, size_row, size_column)
 
@@ -136,13 +149,14 @@ def calc_binary_img(data, size_column, size_row, wmode = 0):
 		Cm, Ce = calc_sdssa_weight(hist, total_pixels)
 		Cd = float(Cm) / Ce
 
-		if wmode == 0:
-			texture_abnormal = Cd * texture_abnormal
-			intensity_abnormal = intensity_abnormal * (1 - Cd)
+		# add weigth
+		texture_abnormal = Cd * texture_abnormal
+		intensity_abnormal = intensity_abnormal * (1 - Cd)
 		
+		# calc final abnormal and thresholding
 		abnormal = texture_abnormal + intensity_abnormal
-		binary_img = auto_threshold_sdssa(abnormal, Cd)
-	elif wmode == 1:
+		return abnormal, Cd
+	else:
 		# Calculate gradient
 		modgrad, modang = ll_angle(data, size_column, size_row, NOTDEF, 0)
 		modgrad = modgrad / np.max(modgrad)
@@ -150,9 +164,32 @@ def calc_binary_img(data, size_column, size_row, wmode = 0):
 		# Calculate weight
 		contours, slope = calc_suppression_weight(modgrad, modang, size_row, size_column, 3)
 		
+		# add weigth
 		modgrad = slope * modgrad
 		intensity_abnormal = intensity_abnormal * (1 - slope)
+		
+		# calc final abnormal and thresholding
 		abnormal = modgrad + intensity_abnormal
+		return abnormal, slope
+
+def calc_binary_img(data, size_column, size_row, wmode):
+	# asset
+	if (wmode == 0 or wmode == 1) and data.ndim != 2:
+		print "Error: SSA modes only support 2-dim data"
+		return None
+
+	if wmode == 0:
+		abnormal, Cd = calc_ssa(data, size_column, size_row, wmode)
+		binary_img = auto_threshold_sv(abnormal, Cd)
+	elif wmode == 1:
+		abnormal, slope = calc_ssa(data, size_column, size_row, wmode)
+		binary_img = auto_threshold_supp(abnormal, slope)
+	elif wmode == 2:
+		th = 0.0
+		bands = np.arange(data.shape[0]) # calculate rxd using all bands
+		
+		abnormal = calc_rxd(data, bands)
+		binary_img = auto_threshold_sv(abnormal, th)
 
 	# remove noise/small regions
 	kernel = np.ones((2, 2), np.uint8)
@@ -173,14 +210,13 @@ def get_list_contours(binary_img):
 		box = cv2.boxPoints(rect)
 		box = np.int0(box)
 
-		rotated_bounding_boxs.append(box)
+		rotated_bounding_boxs.append([box])
 
 	return rotated_bounding_boxs
 
-def draw_candidates(binary_img, contours, color):
-	vis = cv2.cvtColor(binary_img, cv2.COLOR_GRAY2BGR)		
+def draw_candidates(vis, contours, color):
 	for cnt in contours:
-		cv2.drawContours(vis, [box], 0, color, 1)
+		cv2.drawContours(vis, cnt, 0, color, 1)
 
 	return vis
 
@@ -217,54 +253,56 @@ def refine_segment(data, rbbs):
 	pass
 
 def process_by_scene(scene_name):
-	wmode = 0 # binary image calculation mode
+	wmode = 2 # binary image calculation mode
 
-	csv_path = "data/%s.csv" % scene_name
+	csv_path = "data/csv/%s.csv" % scene_name
 	with open(csv_path, 'rb') as csvfile:
 		reader = csv.reader(csvfile, delimiter=',')
-		data = list(reader)
-		for index in range(len(data)):
+		index = 0
+		for row in reader:
 			# reading data
 			filename = "%s_%d" % (scene_name, index)
 			print "Processing", filename
-			filepath = "data/crop/%s.tif" % filename
 			
-			dataset = gdal.Open(filepath, GA_ReadOnly)
-			size_column = dataset.RasterXSize
-			size_row = dataset.RasterYSize
+			d = int(row[2])
+			if d == 1 or d == 2 or d == 3: 
+				filepath = "data/D%d/%s.tif" % (d, filename)
+				
+				dataset = gdal.Open(filepath, GA_ReadOnly)
+				size_column = dataset.RasterXSize
+				size_row = dataset.RasterYSize
 
-			band = dataset.GetRasterBand(1)
-			data = band.ReadAsArray(0, 0, size_column, size_row).astype(np.int)
-			
-			""" 
-				Stage 1: coarse candidates selection using abnormality threshold
-			"""
-			binary_img = calc_binary_img(data, size_column, size_row, wmode)
-			rbbs = get_list_contours(binary_img)
+				band = dataset.GetRasterBand(1)
+				data = band.ReadAsArray(0, 0, size_column, size_row).astype(np.int)
+				
+				""" 
+					Stage 1: coarse candidates selection using abnormality threshold
+				"""
+				binary_img = calc_binary_img(data, size_column, size_row, wmode)
+				rbbs = get_list_contours(binary_img)
 
-			"""
-				Stage 2: refine candidates using shape information
-			"""
-			refine_segment(data, rbbs)
+				"""
+					Stage 2: refine candidates using shape information
+				"""
+				# refine_segment(data, rbbs)
 
-			# vis = draw_candidates(binary_img, contours, (0, 0, 255))
-			# cv2.imwrite('results/1/%d/%s.png' % (wmode, filename), vis)
+				vis = cv2.imread("data/D%d/%s.png" % (d, filename))
+				vis = draw_candidates(vis, rbbs, (0, 0, 255))
+				cv2.imwrite('results/D%d/%s.png' % (d, filename), vis)
+
+			index += 1
 
 if __name__ == '__main__':
-	filelist = ["VNR20150117_PAN", "VNR20150202_PAN",
-				"VNR20150303_PAN", "VNR20150417_PAN",
-				"VNR20150508_PAN", "VNR20150609_PAN",
-				"VNR20150726_PAN", "VNR20150816_PAN",
-				"VNR20150904_PAN",
-				"VNR20150117_PAN_IS", "VNR20150202_PAN_IS",
-				"VNR20150303_PAN_IS", "VNR20150417_PAN_IS",
-				"VNR20150508_PAN_IS", "VNR20150609_PAN_IS",
-				"VNR20150726_PAN_IS", "VNR20150816_PAN_IS",
-				"VNR20150904_PAN_IS",
-				"VNR20150415_PAN", "VNR20150628_PAN", "VNR20150902_PAN"]
+	filelist = ["VNR20150117", "VNR20150202",
+				"VNR20150303", "VNR20150417",
+				"VNR20150508", "VNR20150609",
+				"VNR20150726", "VNR20150816",
+				"VNR20150904",
+				"VNR20150415", "VNR20150628", "VNR20150902"]
 	
-	filelist = ["VNR20150415_PAN", "VNR20150628_PAN", "VNR20150902_PAN"]
+	filelist = ["VNR20150902"]
 	
 	for scene_name in filelist:
+		# crop_by_shp(scene_name)
 		# crop_by_xy(scene_name)
-		process_by_scene(scene_name)
+		# process_by_scene(scene_name)
