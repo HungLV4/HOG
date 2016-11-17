@@ -17,6 +17,7 @@ def calc_rxd(data, bands, size_column, size_row):
 	num_bands = len(bands)
 	num_pixels = size_column * size_row
 
+	print num_bands, num_pixels
 	if num_bands > 1:
 		# reshaping
 		GG = np.zeros((num_bands, num_pixels))
@@ -27,6 +28,8 @@ def calc_rxd(data, bands, size_column, size_row):
 		# calculating covariance matrix
 		M = np.cov(GG)
 		M_i = inv(M)
+
+		print M, "\n", M_i
 
 		avg = [np.mean(GG[i]) for i in range(num_bands)]
 
@@ -40,7 +43,7 @@ def calc_rxd(data, bands, size_column, size_row):
 	return None
 
 if __name__ == '__main__':
-	filepath = "data/crop/D6/VNR20150902_8_PXS.tif"
+	filepath = "data/crop/D6/VNR20150902_0_PXS.tif"
 
 	dataset = gdal.Open(filepath, GA_ReadOnly)
 	size_column = dataset.RasterXSize
@@ -54,3 +57,6 @@ if __name__ == '__main__':
 
 	bands = np.arange(data.shape[0])
 	rxd = calc_rxd(data, bands, size_column, size_row)
+
+	result = rxd.reshape((size_row, size_column))
+	gdal_array.SaveArray(result, 'results/D6/VNR20150902.tif', "GTiff")

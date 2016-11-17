@@ -300,9 +300,9 @@ if __name__ == '__main__':
 				"VNR20150904",
 				"VNR20150415", "VNR20150628", "VNR20150902"]
 	
-	filelist = ["VNR20150902"]
+	filelist = ["VNR20150415", "VNR20150628", "VNR20150902"]
 	
 	for scene_name in filelist:
 		# crop_by_shp(scene_name)
-		# crop_by_xy(scene_name)
+		crop_by_xy(scene_name)
 		# process_by_scene(scene_name)
