@@ -4,17 +4,12 @@
 *.png
 *.npy
 *.pkl
-*.pkl
 *.def
 *.pyd
 *.o
-*.c
-*.c
 *.c
 *.jpg
 *.pgm
 code/ship_detection/data/1.pgm.txt
 *.xml
-*.tif
-*.tif
 *.tif
