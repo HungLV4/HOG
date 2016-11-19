@@ -9,6 +9,24 @@ import gdal
 from gdalconst import *
 from osgeo import gdal_array, osr
 
+def generate_fake_hs(data, size_column, size_row, ws = 5):
+	"""
+	Generate fake hyperspectral image using Shi et al 2014
+	Input:
+		data: 1-band data
+		ws: window size
+	Ouput:
+		fake-multi-band data
+	"""
+	output = np.zeros((ws ** 2, size_row, size_column), dtype=np.int)
+	for x in range(size_row):
+		for y in range(size_column):
+			for i in range(- ws / 2, ws / 2 + 1):
+				for j in range(- ws / 2, ws / 2 + 1):
+					if x + i >= 0 and x + i < size_row and y + j >= 0 and y + j < size_column:
+						output[(i + ws / 2) * ws + (j + ws / 2), x, y] = data[x + i, y + j]
+	return output
+
 def calc_rxd(data, bands, size_column, size_row):
 	if data.shape[0] < bands.max():
 		print "Error: Number of band is larger then actual"
@@ -16,8 +34,8 @@ def calc_rxd(data, bands, size_column, size_row):
 
 	num_bands = len(bands)
 	num_pixels = size_column * size_row
+	rxd = np.zeros(num_pixels)
 
-	print num_bands, num_pixels
 	if num_bands > 1:
 		# reshaping
 		GG = np.zeros((num_bands, num_pixels))
@@ -29,21 +47,24 @@ def calc_rxd(data, bands, size_column, size_row):
 		M = np.cov(GG)
 		M_i = inv(M)
 
-		print M, "\n", M_i
-
 		avg = [np.mean(GG[i]) for i in range(num_bands)]
 
-		rxd = np.zeros(num_pixels)
 		for i in range(num_pixels):
 			signal = GG[:, i] - avg
 			rxd[i] = np.dot(np.dot(signal, M_i), signal.transpose())
+	elif num_bands == 1:
+		band = bands[0]
+		avg = np.mean(data[band])
+		std = np.std(data[band])
+		GG = data[band].reshape(num_pixels)
+		for i in range(num_pixels):
+			rxd[i] = abs((GG[i] - avg) / std)
 
-		return rxd
-
-	return None
+	result = rxd.reshape((size_row, size_column))
+	return result
 
 if __name__ == '__main__':
-	filepath = "data/crop/D6/VNR20150902_0_PXS.tif"
+	filepath = "data/crop/D6/VNR20150902_0_PAN.tif"
 
 	dataset = gdal.Open(filepath, GA_ReadOnly)
 	size_column = dataset.RasterXSize
@@ -55,8 +76,10 @@ if __name__ == '__main__':
 		band = dataset.GetRasterBand(i)
 		data[i - 1,:,:] = band.ReadAsArray(0, 0, size_column, size_row).astype(np.int)
 
-	bands = np.arange(data.shape[0])
+	# bands = np.arange(data.shape[0])
+	# bands = np.array([3])
+	bands = np.array([0])
+
 	rxd = calc_rxd(data, bands, size_column, size_row)
 
-	result = rxd.reshape((size_row, size_column))
-	gdal_array.SaveArray(result, 'results/D6/VNR20150902.tif', "GTiff")
+	gdal_array.SaveArray(rxd, 'results/D6/VNR20150902_PAN.tif', "GTiff")
