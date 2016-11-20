@@ -157,7 +157,7 @@ def calc_ssa(data, size_column, size_row, abnormal, wmode):
 		
 		# calc final abnormal and thresholding
 		abnormal = texture_abnormal + intensity_abnormal
-		return Cd
+		return abnormal, Cd
 	else:
 		# Calculate gradient
 		modgrad, modang = ll_angle(data, size_column, size_row, NOTDEF, 0)
@@ -172,7 +172,7 @@ def calc_ssa(data, size_column, size_row, abnormal, wmode):
 		
 		# calc final abnormal and thresholding
 		abnormal = modgrad + intensity_abnormal
-		return slope
+		return abnormal, slope
 
 def calc_binary_img(data, band_idx, size_column, size_row, wmode):
 	# asset
@@ -181,18 +181,23 @@ def calc_binary_img(data, band_idx, size_column, size_row, wmode):
 		return None
 	
 	abnormal = np.zeros((size_row, size_column))
+	binary_img = np.zeros(abnormal.shape, dtype=np.uint8)
 
 	if wmode == 0 and band_idx[0] <= data.shape[0]:
 		# SSA using Guang Yang  et al 2014 weight
-		Cd = calc_ssa(data[band_idx[0], :, :], size_column, size_row, abnormal, wmode)
+		print "Calculating using SSA"
+		abnormal, Cd = calc_ssa(data[band_idx[0], :, :], size_column, size_row, abnormal, wmode)
 	elif wmode == 1 and band_idx[0] <= data.shape[0]:
 		# SSA using surround suppression weight
-		slope = calc_ssa(data[band_idx[0],:,:], size_column, size_row, abnormal, wmode)
+		print "Calculating using SST"
+		abnormal, slope = calc_ssa(data[band_idx[0],:,:], size_column, size_row, abnormal, wmode)
 	elif wmode == 2:
 		# RXD using multispectral
+		print "Calculating using RXD"
 		abnormal = calc_rxd(data, band_idx, size_column, size_row)
 	elif wmode == 3 and band_idx[0] <= data.shape[0]:
 		# RXD using fake-multispectral
+		print "Calculating using fake RXD"
 
 		# generate fake hyperspectral
 		ws = 5
@@ -276,6 +281,7 @@ def refine_segment(data, rbbs):
 
 def process_by_scene(scene_name):
 	wmode = 3 # binary image calculation mode
+	src = 0
 
 	csv_path = "data/csv/%s.csv" % scene_name
 	with open(csv_path, 'rb') as csvfile:
@@ -286,7 +292,7 @@ def process_by_scene(scene_name):
 			filename = "%s_%d" % (scene_name, index)
 			d = int(row[2])
 			if d == 1 or d == 2 or d == 3: 
-				filepath = "data/crop/D%d/%s_PXS.tif" % (d, filename)
+				filepath = "data/crop/D%d/%s_PAN.tif" % (d, filename)
 				print "Processing", filepath
 				
 				# preparing result folders
@@ -309,11 +315,11 @@ def process_by_scene(scene_name):
 				""" 
 					Stage 1: coarse candidates selection using abnormality threshold
 				"""
-				band_idx = np.array([3])
+				band_idx = np.array([0])
 				abnormal, binary_img = calc_binary_img(data, band_idx, size_column, size_row, wmode)
 				
-				gdal_array.SaveArray(abnormal, 'results/D%d/%s_%d/%d_NIR.tif' % (d, filename, index, wmode), "GTiff")
-				cv2.imwrite('results/D%d/%s_%d/%d_NIR.png' % (d, filename, index, wmode), binary_img)
+				gdal_array.SaveArray(abnormal, 'results/D%d/%s_%d/%d_%d.tif' % (d, filename, index, wmode, src), "GTiff")
+				cv2.imwrite('results/D%d/%s_%d/%d_%d.png' % (d, filename, index, wmode, src), binary_img)
 
 				# rbbs = get_list_contours(binary_img)
 
