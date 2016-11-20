@@ -213,7 +213,7 @@ def calc_binary_img(data, band_idx, size_column, size_row, wmode):
 	# normalize abnotmal into [0, 1] range
 	abnormal = abnormal / abnormal.max()
 
-	threshold = calc_threshold(abnormal, size_column, size_row, mode='otsu')
+	threshold = calc_threshold(abnormal[2:-2,2:-2], size_column - 5, size_row - 5, mode='otsu')
 	print threshold
 
 	binary_img = binaritify(abnormal, threshold)
@@ -280,59 +280,60 @@ def refine_segment(data, rbbs):
 	pass
 
 def process_by_scene(scene_name):
-	wmode = 3 # binary image calculation mode
+	wmode = 0 # binary image calculation mode
 	src = 0
 
-	csv_path = "data/csv/%s.csv" % scene_name
-	with open(csv_path, 'rb') as csvfile:
-		reader = csv.reader(csvfile, delimiter=',')
-		index = 0
-		for row in reader:
-			# reading data
-			filename = "%s_%d" % (scene_name, index)
-			d = int(row[2])
-			if d == 1 or d == 2 or d == 3: 
-				filepath = "data/crop/D%d/%s_PAN.tif" % (d, filename)
-				print "Processing", filepath
-				
-				# preparing result folders
-				directory = 'results/D%d/%s_%d' % (d, filename, index)
-				if not os.path.exists(directory):
-					os.makedirs(directory)
-				
-				# reading metadata
-				dataset = gdal.Open(filepath, GA_ReadOnly)
-				size_column = dataset.RasterXSize
-				size_row = dataset.RasterYSize
-				size_band = dataset.RasterCount
+	for wmo in range(0, 4):
+		csv_path = "data/csv/%s.csv" % scene_name
+		with open(csv_path, 'rb') as csvfile:
+			reader = csv.reader(csvfile, delimiter=',')
+			index = 0
+			for row in reader:
+				# reading data
+				filename = "%s_%d" % (scene_name, index)
+				d = int(row[2])
+				if d == 1 or d == 2 or d == 3 or d == 6: 
+					filepath = "data/crop/D%d/%s_PAN.tif" % (d, filename)
+					print "Processing", filepath
+					
+					# preparing result folders
+					directory = 'results/D%d/%s' % (d, filename)
+					if not os.path.exists(directory):
+						os.makedirs(directory)
+					
+					# reading metadata
+					dataset = gdal.Open(filepath, GA_ReadOnly)
+					size_column = dataset.RasterXSize
+					size_row = dataset.RasterYSize
+					size_band = dataset.RasterCount
 
-				# reading data into n-dimension array
-				data = np.zeros((size_band, size_row, size_column), dtype=np.int)
-				for i in range(1, size_band + 1):
-					band = dataset.GetRasterBand(i)
-					data[i - 1, :, :] = band.ReadAsArray(0, 0, size_column, size_row).astype(np.int)
+					# reading data into n-dimension array
+					data = np.zeros((size_band, size_row, size_column), dtype=np.int)
+					for i in range(1, size_band + 1):
+						band = dataset.GetRasterBand(i)
+						data[i - 1, :, :] = band.ReadAsArray(0, 0, size_column, size_row).astype(np.int)
 
-				""" 
-					Stage 1: coarse candidates selection using abnormality threshold
-				"""
-				band_idx = np.array([0])
-				abnormal, binary_img = calc_binary_img(data, band_idx, size_column, size_row, wmode)
-				
-				gdal_array.SaveArray(abnormal, 'results/D%d/%s_%d/%d_%d.tif' % (d, filename, index, wmode, src), "GTiff")
-				cv2.imwrite('results/D%d/%s_%d/%d_%d.png' % (d, filename, index, wmode, src), binary_img)
+					""" 
+						Stage 1: coarse candidates selection using abnormality threshold
+					"""
+					band_idx = np.array([0])
+					abnormal, binary_img = calc_binary_img(data, band_idx, size_column, size_row, wmode)
+					
+					gdal_array.SaveArray(abnormal, 'results/D%d/%s/%d_%d.tif' % (d, filename, wmode, src), "GTiff")
+					cv2.imwrite('results/D%d/%s/%d_%d.png' % (d, filename, wmode, src), binary_img)
 
-				# rbbs = get_list_contours(binary_img)
+					# rbbs = get_list_contours(binary_img)
 
-				"""
-					Stage 2: refine candidates using shape information
-				"""
-				# refine_segment(data, rbbs)
+					"""
+						Stage 2: refine candidates using shape information
+					"""
+					# refine_segment(data, rbbs)
 
-				# vis = cv2.imread("data/D%d/%s.png" % (d, filename))
-				# vis = draw_candidates(vis, rbbs, (0, 0, 255))
-				# cv2.imwrite('results/D%d/%s.png' % (d, filename), vis)
+					# vis = cv2.imread("data/D%d/%s.png" % (d, filename))
+					# vis = draw_candidates(vis, rbbs, (0, 0, 255))
+					# cv2.imwrite('results/D%d/%s.png' % (d, filename), vis)
 
-			index += 1
+				index += 1
 
 if __name__ == '__main__':
 	filelist = ["VNR20150117", "VNR20150202",
