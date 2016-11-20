@@ -8,7 +8,7 @@ from osgeo import gdal_array, osr
 
 from _sdssa import integral_calc, texture_abnormal_calc
 from _hough import ll_angle, hough_lines
-from _rxd import generate_fake_hs
+# from _rxd import generate_fake_hs
 
 from suppression import calc_inhibition
 from rxd import calc_rxd
@@ -20,9 +20,9 @@ import subprocess
 NOTDEF = -1
 
 def crop_by_shp(scene_name):
-	shp_path = "../../../../../../data/ROI_SHP/CSG.shp"
-	img_path = "../../../../../../data/VNREDSat/%s/%s_PAN.tif" % (scene_name, scene_name)
-	out_path = "data/ori/CSG/%s_PAN.tif" % scene_name
+	shp_path = "../../../../../../data/ROI_SHP/CROP_DaoChuThap.shp"
+	img_path = "../../../../../../data/VNREDSat/DN_PXS_DCT/PXS_%s.tif" %  scene_name
+	out_path = "data/ori/CT_Ocean/%s_PXS.tif" % scene_name
 	
 	subprocess.call("gdalwarp -q -cutline %s -crop_to_cutline -of GTiff %s %s" % (shp_path, img_path, out_path), shell=True)
 
@@ -31,7 +31,7 @@ def crop_by_xy(scene_name):
 	offset_y = 256
 
 	csv_path = "data/csv/%s.csv" % scene_name
-	img_path = "data/ori/CSG/%s_PXS.tif" % scene_name
+	img_path = "data/ori/CT_Ocean/%s_PXS.tif" % scene_name
 	with open(csv_path, 'rb') as csvfile:
 		reader = csv.reader(csvfile, delimiter=',')
 		index = 0
@@ -340,10 +340,9 @@ if __name__ == '__main__':
 				"VNR20150303", "VNR20150417",
 				"VNR20150508", "VNR20150609",
 				"VNR20150726", "VNR20150816",
-				"VNR20150904",
-				"VNR20150415", "VNR20150628", "VNR20150902"]
+				"VNR20150904"]
 	
 	for scene_name in filelist:
 		# crop_by_shp(scene_name)
-		# crop_by_xy(scene_name)
-		process_by_scene(scene_name)
+		crop_by_xy(scene_name)
+		# process_by_scene(scene_name)
