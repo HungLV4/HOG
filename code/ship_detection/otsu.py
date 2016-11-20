@@ -1,6 +1,6 @@
 import numpy as np
 
-def otsu(data, size_column, size_row):
+def calc_otsu(data, size_column, size_row):
 	max_val = 100
 	data = np.floor(data * max_val)
 	binwidth = 1
@@ -10,12 +10,12 @@ def otsu(data, size_column, size_row):
 	total = size_row * size_column
 
 	current_max, threshold = 0.0, 0.0
-	sumT, sumF, sumB = 0, 0, 0
+	sumT, sumF, sumB = 0.0, 0.0, 0.0
 
 	for i in range(max_val + 1):
 		sumT += i * hist[i]
 	
-	weightB, weightF = 0, 0
+	weightB, weightF = 0.0, 0.0
 	varBetween, meanB, meanF = 0.0, 0.0, 0.0
 	for i in range(max_val + 1):
 		weightB += hist[i]
@@ -34,7 +34,7 @@ def otsu(data, size_column, size_row):
 			current_max = varBetween
 			threshold = i
 
-	return threshold
+	return float(threshold) / max_val
 
 
 

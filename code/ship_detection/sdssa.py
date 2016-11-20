@@ -8,9 +8,11 @@ from osgeo import gdal_array, osr
 
 from _sdssa import integral_calc, texture_abnormal_calc
 from _hough import ll_angle, hough_lines
+from _rxd import generate_fake_hs
 
 from suppression import calc_inhibition
-from rxd import calc_rxd, generate_fake_hs
+from rxd import calc_rxd
+from otsu import calc_otsu
 
 import csv
 import subprocess
@@ -103,19 +105,24 @@ def calc_suppression_weight(modgrad, modang, rows, cols, mode):
 
 	return contours, slope
 
-def auto_threshold_sv(abnormal, threshold):
+def calc_threshold(abnormal, size_column, size_row, mode):
 	"""
-	Threshold using Single Value
+	Fiding threshold using Otsu method
+	"""
+	if mode == 'otsu':
+		return calc_otsu(abnormal, size_column, size_row)
+	
+	return 0
+
+def binaritify(abnormal, threshold):
+	"""
+	Binarize image using single threshold value
 	"""
 	binary_img = np.zeros(abnormal.shape, dtype=np.uint8)
 	binary_img[abnormal > threshold] = 255
-
 	return binary_img
 
-def auto_threshold_supp(abnormal, slope):
-	pass
-
-def calc_ssa(data, size_column, size_row, wmode):
+def calc_ssa(data, size_column, size_row, abnormal, wmode):
 	"""
 	Input:
 		data: input data file
@@ -123,17 +130,12 @@ def calc_ssa(data, size_column, size_row, wmode):
 			0: SDSSA weight
 			1: Suppression weight
 	Output:
-		Binary mask
+		abnormal: abnormal calculated
 	"""
 	binwidth = 1
 	NOTDEF = 0
 
 	total_pixels = sum(sum(i > 0 for i in data))
-	
-	"""
-	Calculating abnormality
-	"""
-	abnormal = np.zeros((size_row, size_column))
 
 	# Calculate the histogram of image
 	hist, bin_edges = np.histogram(data, bins=np.arange(1, np.max(data) + 2 * binwidth, binwidth))
@@ -155,7 +157,7 @@ def calc_ssa(data, size_column, size_row, wmode):
 		
 		# calc final abnormal and thresholding
 		abnormal = texture_abnormal + intensity_abnormal
-		return abnormal, Cd
+		return Cd
 	else:
 		# Calculate gradient
 		modgrad, modang = ll_angle(data, size_column, size_row, NOTDEF, 0)
@@ -170,56 +172,53 @@ def calc_ssa(data, size_column, size_row, wmode):
 		
 		# calc final abnormal and thresholding
 		abnormal = modgrad + intensity_abnormal
-		return abnormal, slope
+		return slope
 
 def calc_binary_img(data, band_idx, size_column, size_row, wmode):
 	# asset
 	if (wmode == 0 or wmode == 1) and len(band_idx) > 1:
-		print "Error: SSA modes only support 2-dim data"
+		print "Error: SSA modes only support 1-band data"
 		return None
+	
+	abnormal = np.zeros((size_row, size_column))
 
-	if wmode == 0:
+	if wmode == 0 and band_idx[0] <= data.shape[0]:
 		# SSA using Guang Yang  et al 2014 weight
-		if data.ndim == 2:
-			abnormal, Cd = calc_ssa(data, size_column, size_row, wmode)
-		elif data.ndim > 2 and band_idx[0] <= data.ndim:
-			abnormal, Cd = calc_ssa(data[band_idx[0],:,:], size_column, size_row, wmode)
-		
-		binary_img = auto_threshold_sv(abnormal, Cd)
-	elif wmode == 1:
+		Cd = calc_ssa(data[band_idx[0], :, :], size_column, size_row, abnormal, wmode)
+	elif wmode == 1 and band_idx[0] <= data.shape[0]:
 		# SSA using surround suppression weight
-		if data.ndim == 2:
-			abnormal, slope = calc_ssa(data, size_column, size_row, wmode)
-		elif data.ndim > 2 and band_idx[0] <= data.ndim:
-			abnormal, slope = calc_ssa(data[band_idx[0],:,:], size_column, size_row, wmode)
-		
-		binary_img = auto_threshold_supp(abnormal, slope)
+		slope = calc_ssa(data[band_idx[0],:,:], size_column, size_row, abnormal, wmode)
 	elif wmode == 2:
 		# RXD using multispectral
-		th = 0.0
 		abnormal = calc_rxd(data, band_idx, size_column, size_row)
-		
-		binary_img = auto_threshold_sv(abnormal, th)
-	elif wmode == 3:
+	elif wmode == 3 and band_idx[0] <= data.shape[0]:
 		# RXD using fake-multispectral
-		ws = 5
-		th = 0.0
 
 		# generate fake hyperspectral
-		if data.ndim == 2:
-			fakeHs = generate_fake_hs(data, size_column, size_row, ws)
-		elif data.ndim > 2 and band_idx[0] <= data.ndim:
-			fakeHs = generate_fake_hs(data[band_idx[0],:,:], size_column, size_row, ws)
+		ws = 5
+		fakeHs = np.zeros((ws ** 2, size_row, size_column), dtype=np.int)
+		generate_fake_hs(data[band_idx[0], :, :], size_column, size_row, ws, fakeHs)
 
+		# RXD using fake multispectral
 		abnormal = calc_rxd(fakeHs, np.arange(ws ** 2), size_column, size_row)
-		binary_img = auto_threshold_sv(abnormal, th)
+
+	if abnormal.max() == 0:
+		return abnormal, binary_img
+
+	# normalize abnotmal into [0, 1] range
+	abnormal = abnormal / abnormal.max()
+
+	threshold = calc_threshold(abnormal, size_column, size_row, mode='otsu')
+	print threshold
+
+	binary_img = binaritify(abnormal, threshold)
 
 	# remove noise/small regions
-	# kernel = np.ones((2, 2), np.uint8)
-	# binary_img = cv2.morphologyEx(binary_img, cv2.MORPH_OPEN, kernel, iterations = 2)
+	kernel = np.ones((2, 2), np.uint8)
+	binary_img = cv2.morphologyEx(binary_img, cv2.MORPH_OPEN, kernel, iterations = 2)
 
-	# kernel = np.ones((3, 3), np.uint8)
-	# binary_img = cv2.morphologyEx(binary_img, cv2.MORPH_CLOSE, kernel, iterations = 2)
+	kernel = np.ones((3, 3), np.uint8)
+	binary_img = cv2.morphologyEx(binary_img, cv2.MORPH_CLOSE, kernel, iterations = 1)
 
 	return abnormal, binary_img
 
@@ -285,32 +284,36 @@ def process_by_scene(scene_name):
 		for row in reader:
 			# reading data
 			filename = "%s_%d" % (scene_name, index)
-			print "Processing", filename
-			
 			d = int(row[2])
-			if d == 6: 
-				filepath = "data/crop/D%d/%s_PAN.tif" % (d, filename)
-				directory = 'results/D%d/%d' % (d, index)
+			if d == 1 or d == 2 or d == 3: 
+				filepath = "data/crop/D%d/%s_PXS.tif" % (d, filename)
+				print "Processing", filepath
+				
+				# preparing result folders
+				directory = 'results/D%d/%s_%d' % (d, filename, index)
 				if not os.path.exists(directory):
 					os.makedirs(directory)
 				
+				# reading metadata
 				dataset = gdal.Open(filepath, GA_ReadOnly)
 				size_column = dataset.RasterXSize
 				size_row = dataset.RasterYSize
 				size_band = dataset.RasterCount
 
-				band = dataset.GetRasterBand(1)
+				# reading data into n-dimension array
 				data = np.zeros((size_band, size_row, size_column), dtype=np.int)
 				for i in range(1, size_band + 1):
 					band = dataset.GetRasterBand(i)
-					data[i - 1,:,:] = band.ReadAsArray(0, 0, size_column, size_row).astype(np.int)
-				
+					data[i - 1, :, :] = band.ReadAsArray(0, 0, size_column, size_row).astype(np.int)
+
 				""" 
 					Stage 1: coarse candidates selection using abnormality threshold
 				"""
-				band_idx = np.array([0])
+				band_idx = np.array([3])
 				abnormal, binary_img = calc_binary_img(data, band_idx, size_column, size_row, wmode)
-				gdal_array.SaveArray(abnormal, 'results/D%d/%d/%s_%d_PAN.tif' % (d, index, filename, wmode), "GTiff")
+				
+				gdal_array.SaveArray(abnormal, 'results/D%d/%s_%d/%d_NIR.tif' % (d, filename, index, wmode), "GTiff")
+				cv2.imwrite('results/D%d/%s_%d/%d_NIR.png' % (d, filename, index, wmode), binary_img)
 
 				# rbbs = get_list_contours(binary_img)
 
@@ -333,7 +336,12 @@ if __name__ == '__main__':
 				"VNR20150904",
 				"VNR20150415", "VNR20150628", "VNR20150902"]
 	
-	filelist = ["VNR20150902"]
+	filelist = ["VNR20150117", "VNR20150202",
+				"VNR20150303", "VNR20150417",
+				"VNR20150508", "VNR20150609",
+				"VNR20150726", "VNR20150816",
+				"VNR20150904",
+				"VNR20150415", "VNR20150628", "VNR20150902"]
 	
 	for scene_name in filelist:
 		# crop_by_shp(scene_name)

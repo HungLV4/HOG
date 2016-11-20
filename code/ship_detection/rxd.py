@@ -27,20 +27,24 @@ def generate_fake_hs(data, size_column, size_row, ws = 5):
 						output[(i + ws / 2) * ws + (j + ws / 2), x, y] = data[x + i, y + j]
 	return output
 
-def calc_rxd(data, bands, size_column, size_row):
-	if data.shape[0] < bands.max():
+def calc_rxd(data, band_idx, size_column, size_row):
+	"""
+		Calcualte abnormal using RXD (Reed-Xiao) algorithm
+	"""
+	if data.shape[0] < band_idx.max():
 		print "Error: Number of band is larger then actual"
 		return None
 
-	num_bands = len(bands)
+	num_bands = len(band_idx)
 	num_pixels = size_column * size_row
+	
 	rxd = np.zeros(num_pixels)
 
 	if num_bands > 1:
 		# reshaping
 		GG = np.zeros((num_bands, num_pixels))
 		for i in range(num_bands):
-			band = bands[i]
+			band = band_idx[i]
 			GG[i, ] = data[band].reshape(num_pixels)
 
 		# calculating covariance matrix
@@ -53,15 +57,16 @@ def calc_rxd(data, bands, size_column, size_row):
 			signal = GG[:, i] - avg
 			rxd[i] = np.dot(np.dot(signal, M_i), signal.transpose())
 	elif num_bands == 1:
-		band = bands[0]
+		band = band_idx[0]
+		
 		avg = np.mean(data[band])
 		std = np.std(data[band])
 		GG = data[band].reshape(num_pixels)
 		for i in range(num_pixels):
 			rxd[i] = abs((GG[i] - avg) / std)
 
-	result = rxd.reshape((size_row, size_column))
-	return result
+	abnormal = rxd.reshape((size_row, size_column))
+	return abnormal
 
 if __name__ == '__main__':
 	filepath = "data/crop/D6/VNR20150902_0_PAN.tif"
