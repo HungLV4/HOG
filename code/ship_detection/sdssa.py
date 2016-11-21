@@ -365,5 +365,5 @@ if __name__ == '__main__':
 	
 	for scene_name in filelist:
 		# crop_by_shp(scene_name)
-		# crop_by_xy(scene_name)
-		process_by_scene(scene_name)
+		crop_by_xy(scene_name)
+		# process_by_scene(scene_name)
