@@ -31,7 +31,7 @@ def crop_by_xy(scene_name):
 	offset_y = 256
 
 	csv_path = "data/csv/%s.csv" % scene_name
-	img_path = "data/ori/CT_Ocean/%s_PXS.tif" % scene_name
+	img_path = "data/ori/CT_Ocean/%s_PAN.tif" % scene_name
 	with open(csv_path, 'rb') as csvfile:
 		reader = csv.reader(csvfile, delimiter=',')
 		index = 0
@@ -42,7 +42,7 @@ def crop_by_xy(scene_name):
 
 			if d == 1 or d == 2 or d == 3 or d  == 6:
 				print scene_name, index
-				out_path = "data/crop/D%d/%s_%d_PXS.tif" % (d, scene_name, index)
+				out_path = "data/crop/D%d/%s_%d_PAN.tif" % (d, scene_name, index)
 				subprocess.call("gdal_translate -srcwin %d %d %d %d -of Gtiff %s %s" % (x, y, offset_x, offset_y, img_path, out_path), shell=True)
 
 			index += 1
@@ -365,5 +365,5 @@ if __name__ == '__main__':
 	
 	for scene_name in filelist:
 		# crop_by_shp(scene_name)
-		crop_by_xy(scene_name)
-		# process_by_scene(scene_name)
+		# crop_by_xy(scene_name)
+		process_by_scene(scene_name)
