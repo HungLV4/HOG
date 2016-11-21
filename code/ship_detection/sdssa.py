@@ -8,7 +8,7 @@ from osgeo import gdal_array, osr
 
 from _sdssa import integral_calc, texture_abnormal_calc
 from _hough import ll_angle, hough_lines
-# from _rxd import generate_fake_hs
+from _rxd import generate_fake_hs
 
 from suppression import calc_inhibition
 from rxd import calc_rxd
@@ -280,60 +280,73 @@ def refine_segment(data, rbbs):
 	pass
 
 def process_by_scene(scene_name):
-	wmode = 0 # binary image calculation mode
-	src = 0
+	wmode = 2 # binary image calculation mode
+	src = 4
 
-	for wmo in range(0, 4):
-		csv_path = "data/csv/%s.csv" % scene_name
-		with open(csv_path, 'rb') as csvfile:
-			reader = csv.reader(csvfile, delimiter=',')
-			index = 0
-			for row in reader:
-				# reading data
-				filename = "%s_%d" % (scene_name, index)
-				d = int(row[2])
-				if d == 1 or d == 2 or d == 3 or d == 6: 
-					filepath = "data/crop/D%d/%s_PAN.tif" % (d, filename)
-					print "Processing", filepath
-					
-					# preparing result folders
-					directory = 'results/D%d/%s' % (d, filename)
-					if not os.path.exists(directory):
-						os.makedirs(directory)
-					
-					# reading metadata
-					dataset = gdal.Open(filepath, GA_ReadOnly)
-					size_column = dataset.RasterXSize
-					size_row = dataset.RasterYSize
-					size_band = dataset.RasterCount
+	csv_path = "data/csv/%s.csv" % scene_name
+	with open(csv_path, 'rb') as csvfile:
+		reader = csv.reader(csvfile, delimiter=',')
+		index = 0
+		for row in reader:
+			# reading data
+			filename = "%s_%d" % (scene_name, index)
+			print "Processing", filename
 
-					# reading data into n-dimension array
-					data = np.zeros((size_band, size_row, size_column), dtype=np.int)
-					for i in range(1, size_band + 1):
-						band = dataset.GetRasterBand(i)
-						data[i - 1, :, :] = band.ReadAsArray(0, 0, size_column, size_row).astype(np.int)
+			d = int(row[2])
+			if d == 1 or d == 2 or d == 3 or d == 6:
+				# img_path = "data\\crop\\D%d\\%s.png" % (d, filename)
+				# out_path = 'results\\D%d\\%s\\' % (d, filename)
+				# subprocess.call("copy %s %s" % (img_path, out_path), shell=True)
+				# index += 1
+				# continue
 
-					""" 
-						Stage 1: coarse candidates selection using abnormality threshold
-					"""
-					band_idx = np.array([0])
-					abnormal, binary_img = calc_binary_img(data, band_idx, size_column, size_row, wmode)
-					
-					gdal_array.SaveArray(abnormal, 'results/D%d/%s/%d_%d.tif' % (d, filename, wmode, src), "GTiff")
-					cv2.imwrite('results/D%d/%s/%d_%d.png' % (d, filename, wmode, src), binary_img)
+				# preparing result folders
+				directory = 'results/D%d/%s' % (d, filename)
+				if not os.path.exists(directory):
+					os.makedirs(directory)
+				
+				filepath = "data/crop/D%d/%s_PXS.tif" % (d, filename)
 
-					# rbbs = get_list_contours(binary_img)
+				# reading metadata
+				dataset = gdal.Open(filepath, GA_ReadOnly)
+				size_column = dataset.RasterXSize
+				size_row = dataset.RasterYSize
+				size_band = dataset.RasterCount
 
-					"""
-						Stage 2: refine candidates using shape information
-					"""
-					# refine_segment(data, rbbs)
+				# reading data into n-dimension array
+				data = np.zeros((size_band + 1, size_row, size_column), dtype=np.int)
+				
+				for i in range(1, size_band + 1):
+					band = dataset.GetRasterBand(i)
+					data[i - 1, :, :] = band.ReadAsArray(0, 0, size_column, size_row).astype(np.int)
 
-					# vis = cv2.imread("data/D%d/%s.png" % (d, filename))
-					# vis = draw_candidates(vis, rbbs, (0, 0, 255))
-					# cv2.imwrite('results/D%d/%s.png' % (d, filename), vis)
 
-				index += 1
+				# filepath = "data/crop/D%d/%s_PAN.tif" % (d, filename)
+				# dataset = gdal.Open(filepath, GA_ReadOnly)
+				# band = dataset.GetRasterBand(1)
+				# data[size_band, :, :] = band.ReadAsArray(0, 0, size_column, size_row).astype(np.int)
+
+				""" 
+					Stage 1: coarse candidates selection using abnormality threshold
+				"""
+				band_idx = np.arange(3,5)
+				abnormal, binary_img = calc_binary_img(data, band_idx, size_column, size_row, wmode)
+				
+				gdal_array.SaveArray(abnormal, 'results/D%d/%s/%d_%d.tif' % (d, filename, wmode, src), "GTiff")
+				cv2.imwrite('results/D%d/%s/%d_%d.png' % (d, filename, wmode, src), binary_img)
+
+				# rbbs = get_list_contours(binary_img)
+
+				"""
+					Stage 2: refine candidates using shape information
+				"""
+				# refine_segment(data, rbbs)
+
+				# vis = cv2.imread("data/D%d/%s.png" % (d, filename))
+				# vis = draw_candidates(vis, rbbs, (0, 0, 255))
+				# cv2.imwrite('results/D%d/%s.png' % (d, filename), vis)
+
+			index += 1
 
 if __name__ == '__main__':
 	filelist = ["VNR20150117", "VNR20150202",
@@ -347,9 +360,10 @@ if __name__ == '__main__':
 				"VNR20150303", "VNR20150417",
 				"VNR20150508", "VNR20150609",
 				"VNR20150726", "VNR20150816",
-				"VNR20150904"]
+				"VNR20150904",
+				"VNR20150415", "VNR20150628", "VNR20150902"]
 	
 	for scene_name in filelist:
 		# crop_by_shp(scene_name)
-		crop_by_xy(scene_name)
-		# process_by_scene(scene_name)
+		# crop_by_xy(scene_name)
+		process_by_scene(scene_name)
