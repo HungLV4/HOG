@@ -2,6 +2,10 @@ import os
 import numpy as np
 import cv2
 
+from scipy.io.arff import loadarff
+from sklearn.svm import SVC
+from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
+
 import gdal
 from gdalconst import *
 from osgeo import gdal_array, osr
@@ -31,7 +35,7 @@ def crop_by_xy(scene_name):
 	offset_y = 256
 
 	csv_path = "data/csv/%s.csv" % scene_name
-	img_path = "data/ori/CT_Ocean/%s.jpg" % scene_name
+	img_path = "data/ori/CSG/%s_PXS.tif" % scene_name
 	with open(csv_path, 'rb') as csvfile:
 		reader = csv.reader(csvfile, delimiter=',')
 		index = 0
@@ -42,8 +46,8 @@ def crop_by_xy(scene_name):
 
 			if d == 1 or d == 2 or d == 3 or d  == 6:
 				print scene_name, index
-				out_path = "data/crop/D%d/%s_%d.png" % (d, scene_name, index)
-				subprocess.call("gdal_translate -srcwin %d %d %d %d -of png %s %s" % (x, y, offset_x, offset_y, img_path, out_path), shell=True)
+				out_path = "data/crop/D%d/%s_%d_PXS.tif" % (d, scene_name, index)
+				subprocess.call("gdal_translate -srcwin %d %d %d %d -of GTiff %s %s" % (x, y, offset_x, offset_y, img_path, out_path), shell=True)
 
 			index += 1
 
@@ -213,7 +217,7 @@ def calc_binary_img(data, band_idx, size_column, size_row, wmode):
 	# normalize abnotmal into [0, 1] range
 	abnormal = abnormal / abnormal.max()
 
-	threshold = calc_threshold(abnormal[2: -2, 2: -2], size_column, size_row, mode='otsu')
+	threshold = calc_threshold(abnormal[2: -2, 2: -2], size_column - 10, size_row - 10, mode='otsu')
 	binary_img = binaritify(abnormal, threshold)
 
 	# remove noise/small regions
@@ -221,7 +225,7 @@ def calc_binary_img(data, band_idx, size_column, size_row, wmode):
 	binary_img = cv2.morphologyEx(binary_img, cv2.MORPH_OPEN, kernel, iterations = 2)
 
 	kernel = np.ones((3, 3), np.uint8)
-	binary_img = cv2.morphologyEx(binary_img, cv2.MORPH_CLOSE, kernel, iterations = 1)
+	binary_img = cv2.morphologyEx(binary_img, cv2.MORPH_CLOSE, kernel, iterations = 2)
 
 	return abnormal, binary_img
 
@@ -229,29 +233,39 @@ def accurate_classify(clf, binary_img):
 	temp = binary_img.copy()
 	_, contours, _ = cv2.findContours(temp, cv2.RETR_LIST, 2)
 	
-	positions = []
+	pos = []
+	neg = []
 	for cnt in contours:
 		area = cv2.contourArea(cnt)
 		perimeter = cv2.arcLength(cnt, True)
-		compactness = (perimeter ** 2) / (4 * np.pi * area)
+		if area > 10 and perimeter > 10:
+			compactness = (perimeter ** 2) / (4 * np.pi * area)
 
-		rect = cv2.minAreaRect(cnt)
-		size =  rect[1]
-		
-		extent = area / (size[0] * size[1])
+			rect = cv2.minAreaRect(cnt)
+			size =  rect[1]
+			
+			extent = area / (size[0] * size[1])
 
-		axeX = size[0]
-		axeY = size[1]
-		ratio = (axeX / axeY) if axeX > axeY else (axeY / axeX)
+			M = cv2.moments(cnt)
+			HuM = cv2.HuMoments(M)
 
-		box = cv2.boxPoints(rect)
-		box = np.int0(box)
+			axeX = size[0]
+			axeY = size[1]
+			ratio = (axeX / axeY) if axeX > axeY else (axeY / axeX)
 
-		X_test = [compactness, extent, ratio]
-		y_pred = clf.predict(X_test)
-		if int(y_pred[0]) == 1:
-			positions.append([box])
-	return positions
+			box = cv2.boxPoints(rect)
+			box = np.int0(box)
+
+			X_test = [compactness, extent, ratio, HuM[0][0], HuM[1][0], HuM[2][0], HuM[3][0]]
+			X_test = np.asarray(X_test, dtype=np.float32)
+			X_test = X_test.reshape(1, -1)
+
+			y_pred = clf.predict(X_test)
+			if int(y_pred[0]) == 1:
+				pos.append([box])
+			else:
+				neg.append([box])
+	return pos, neg
 
 def get_list_contours(binary_img):
 	temp = binary_img.copy()
@@ -305,9 +319,7 @@ def refine_segment(data, rbbs):
 	# gdal_array.SaveArray(hs.astype(int), 'results/%d/%s_hs.tif' % (wmode, filename), "GTiff")
 	pass
 
-def process_by_scene(clf, scene_name):
-	src = 1
-
+def classify_by_scene(clf, scene_name):
 	csv_path = "data/csv/%s.csv" % scene_name
 	with open(csv_path, 'rb') as csvfile:
 		reader = csv.reader(csvfile, delimiter=',')
@@ -324,46 +336,104 @@ def process_by_scene(clf, scene_name):
 				# if not os.path.exists(directory):
 				# 	os.makedirs(directory)
 				
-				filepath = "data/crop/D%d/%s_PAN.tif" % (d, filename)
+				for wmode in range(0, 4):
+					dataset = gdal.Open('results/D%d/%s/%d.tif' % (d, filename, wmode), GA_ReadOnly)
+					size_column = dataset.RasterXSize
+					size_row = dataset.RasterYSize
+					band = dataset.GetRasterBand(1)
+					abnormal = band.ReadAsArray(0, 0, size_column, size_row)
+
+					src = 2
+					minus = 5
+					threshold = calc_threshold(abnormal[2: -2, 2: -2], size_column - minus, size_row - minus, mode='otsu')
+					binary_img = binaritify(abnormal, threshold)
+					kernel = np.ones((2, 2), np.uint8)
+					binary_img = cv2.morphologyEx(binary_img, cv2.MORPH_OPEN, kernel, iterations = 2)
+					kernel = np.ones((3, 3), np.uint8)
+					binary_img = cv2.morphologyEx(binary_img, cv2.MORPH_CLOSE, kernel, iterations = 2)
+
+					"""
+					Stage 2: accurate detection
+					"""
+					pos, negs = accurate_classify(clf, binary_img)
+
+					vis = cv2.imread("data/crop/D%d/%s.png" % (d, filename))
+					vis = draw_candidates(vis, pos, (0, 255, 0))
+					vis = draw_candidates(vis, negs, (0, 0, 255))
+					cv2.imwrite('results/D%d/%s/%d_%d_v.png' % (d, filename, wmode, src), vis)
+					cv2.imwrite('results/D%d/%s/%d_%d_b.png' % (d, filename, wmode, src), binary_img)
+
+			index += 1
+
+def segment_by_scene(scene_name):
+	csv_path = "data/csv/%s.csv" % scene_name
+	with open(csv_path, 'rb') as csvfile:
+		reader = csv.reader(csvfile, delimiter=',')
+		index = 0
+		for row in reader:
+			# reading data
+			filename = "%s_%d" % (scene_name, index)
+			print "Processing", filename
+
+			d = int(row[2])
+			if d == 1 or d == 2 or d == 3 or d == 6:
+				# preparing result folders
+				directory = 'results/D%d/%s' % (d, filename)
+				if not os.path.exists(directory):
+					os.makedirs(directory)
+
+				"""
+				Stage 1: reading PAN image
+				"""				
+				panpath = "data/crop/D%d/%s_PAN.tif" % (d, filename)
 
 				# reading metadata
-				dataset = gdal.Open(filepath, GA_ReadOnly)
-				size_column = dataset.RasterXSize
-				size_row = dataset.RasterYSize
-				size_band = dataset.RasterCount
+				panset = gdal.Open(panpath, GA_ReadOnly)
+				size_column = panset.RasterXSize
+				size_row = panset.RasterYSize
+
+				"""
+				Stage 2: reading MS image
+				"""
+				mspath = "data/crop/D%d/%s_PXS.tif" % (d, filename)
+				msset = gdal.Open(mspath, GA_ReadOnly)
+				size_band = msset.RasterCount + 1
+
+				if msset.RasterXSize != size_column or msset.RasterYSize != size_row:
+					assert("Two dataset have different size")
 
 				# reading data into n-dimension array
-				data = np.zeros((size_band, size_row, size_column), dtype=np.int)
-				
+				data = np.zeros((ms_size_band + 1, size_row, size_column), dtype=np.int)
+				data[0, :, :] = panset.GetRasterBand(1).ReadAsArray(0, 0, size_column, size_row).astype(np.int)				
 				for i in range(1, size_band + 1):
-					band = dataset.GetRasterBand(i)
-					data[i - 1, :, :] = band.ReadAsArray(0, 0, size_column, size_row).astype(np.int)
+					data[i, :, :] = msset.GetRasterBand(i).ReadAsArray(0, 0, size_column, size_row).astype(np.int)
 
-				band_idx = np.array([0])
-				for wmode in range(0, 4):
-					""" 
+				mode = [(0, [0]),
+						(1, [0]),
+						(2, [0]),
+						(3, [0]),
+						(2, [1,2,3,4]),
+						(2, [0,1,2,3,4]),
+						(2, [0, 4])]
+				for wmode, band_idx in mode:
+					"""
 					Stage 1: coarse candidates selection using abnormality threshold
 					"""
 					abnormal, binary_img = calc_binary_img(data, band_idx, size_column, size_row, wmode)
 					
-					"""
-					Stage 2: accurate detection
-					"""
-					rbbs = accurate_classify(clf, binary_img)
-
-					vis = cv2.imread("data/D%d/%s.png" % (d, filename))
-					vis = draw_candidates(vis, rbbs, (255, 192, 203))
-					cv2.imwrite('results/D%d/%s/%d_%d.png' % (d, filename, wmode, src), vis)
+					# save temp results
+					gdal_array.SaveArray(abnormal, 'results/D%d/%s/%d.tif' % (d, filename, wmode), "GTiff")
+					cv2.imwrite('results/D%d/%s/%d_%d.png' % (d, filename, wmode, src), binary_img)
 
 			index += 1
 
 if __name__ == '__main__':
 	ref = ["VNR20150117", "VNR20150202",
-				"VNR20150303", "VNR20150417",
-				"VNR20150508", "VNR20150609",
-				"VNR20150726", "VNR20150816",
-				"VNR20150904",
-				"VNR20150415", "VNR20150628", "VNR20150902"]
+			"VNR20150303", "VNR20150417",
+			"VNR20150508", "VNR20150609",
+			"VNR20150726", "VNR20150816",
+			"VNR20150904",
+			"VNR20150415", "VNR20150628", "VNR20150902"]
 	
 	filelist = ["VNR20150117", "VNR20150202",
 				"VNR20150303", "VNR20150417",
@@ -375,19 +445,17 @@ if __name__ == '__main__':
 	"""
 	Stage 1: preparing classifier training dataset
 	"""
-	training = loadarff(open("data/train.arff",'r'))
-	y_train = np.array(training[0]['class'])
+	# training = loadarff(open("data/train.arff",'r'))
+	# y_train = np.array(training[0]['class'])
 	
-	features = np.array(training[0][['compactness',\
-									'extent',
-									'ratio']])
-	X_train = np.asarray(features.tolist(), dtype=np.float32)
+	# features = np.array(training[0][['compactness',\
+	# 								'extent',
+	# 								'ratio', 'hu1', 'hu2', 'hu3', 'hu4']])
+	# X_train = np.asarray(features.tolist(), dtype=np.float32)
 
-	# training using grid search
-	param_grid = {'C': [1e3, 5e3, 1e4, 5e4, 1e5], 'gamma': [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.1], }
-	
-	clf = GridSearchCV(SVC(kernel='rbf', class_weight='balanced'), param_grid)
-	clf = clf.fit(X_train, y_train)
+	# param_grid = {'C': [1e3, 5e3, 1e4, 5e4, 1e5], 'gamma': [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.1], }
+	# clf = GridSearchCV(SVC(kernel='rbf', class_weight='balanced'), param_grid)
+	# clf = clf.fit(X_train, y_train)
 	
 	"""
 	Stage 2: ship detection for each scene
@@ -395,4 +463,4 @@ if __name__ == '__main__':
 	for scene_name in filelist:
 		# crop_by_shp(scene_name)
 		# crop_by_xy(scene_name)
-		process_by_scene(clf, scene_name)
+		segment_by_scene(scene_name)
