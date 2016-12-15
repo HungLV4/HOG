@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import os
 import numpy as np
 import cv2
@@ -45,9 +47,30 @@ def crop_by_xy(scene_name):
 			d = int(row[2])
 
 			if d == 1 or d == 2 or d == 3 or d  == 6:
-				print scene_name, index
+				print(scene_name, index)
 				out_path = "data/crop/D%d/%s_%d_PXS.tif" % (d, scene_name, index)
 				subprocess.call("gdal_translate -srcwin %d %d %d %d -of GTiff %s %s" % (x, y, offset_x, offset_y, img_path, out_path), shell=True)
+
+			index += 1
+
+def copy(scene_name):
+	offset_x = 256
+	offset_y = 256
+
+	csv_path = "data/csv/%s.csv" % scene_name
+	img_path = "data/ori/CT_Ocean/%s.jpg" % scene_name
+	with open(csv_path, 'rb') as csvfile:
+		reader = csv.reader(csvfile, delimiter=',')
+		index = 0
+		for row in reader:
+			x = int(row[0]) - 1
+			y = int(row[1]) - 1
+			d = int(row[2])
+
+			filename = "%s_%d" % (scene_name, index)
+			if d == 1 or d == 2 or d == 3 or d  == 6:
+				out_path = "results/D%d/%s/vis.png" % (d, filename)
+				subprocess.call("gdal_translate -srcwin %d %d %d %d -of png %s %s" % (x, y, offset_x, offset_y, img_path, out_path), shell=True)
 
 			index += 1
 
@@ -181,7 +204,7 @@ def calc_ssa(data, size_column, size_row, abnormal, wmode):
 def calc_binary_img(data, band_idx, size_column, size_row, wmode):
 	# asset
 	if (wmode == 0 or wmode == 1) and len(band_idx) > 1:
-		print "Error: SSA modes only support 1-band data"
+		print("Error: SSA modes only support 1-band data")
 		return None
 	
 	abnormal = np.zeros((size_row, size_column))
@@ -189,19 +212,19 @@ def calc_binary_img(data, band_idx, size_column, size_row, wmode):
 
 	if wmode == 0 and band_idx[0] <= data.shape[0]:
 		# SSA using Guang Yang  et al 2014 weight
-		print "Calculating using SSA"
+		print("Calculating using SSA")
 		abnormal, Cd = calc_ssa(data[band_idx[0], :, :], size_column, size_row, abnormal, wmode)
 	elif wmode == 1 and band_idx[0] <= data.shape[0]:
 		# SSA using surround suppression weight
-		print "Calculating using SST"
+		print("Calculating using SST")
 		abnormal, slope = calc_ssa(data[band_idx[0],:,:], size_column, size_row, abnormal, wmode)
 	elif wmode == 2:
 		# RXD using multispectral
-		print "Calculating using RXD"
+		print("Calculating using RXD")
 		abnormal = calc_rxd(data, band_idx, size_column, size_row)
 	elif wmode == 3 and band_idx[0] <= data.shape[0]:
 		# RXD using fake-multispectral
-		print "Calculating using fake RXD"
+		print("Calculating using fake RXD")
 
 		# generate fake hyperspectral
 		ws = 5
@@ -217,15 +240,15 @@ def calc_binary_img(data, band_idx, size_column, size_row, wmode):
 	# normalize abnotmal into [0, 1] range
 	abnormal = abnormal / abnormal.max()
 
-	threshold = calc_threshold(abnormal[2: -2, 2: -2], size_column - 10, size_row - 10, mode='otsu')
+	threshold = calc_threshold(abnormal[2: -2, 2: -2], size_column - 4, size_row - 4, mode='otsu')
 	binary_img = binaritify(abnormal, threshold)
 
 	# remove noise/small regions
-	kernel = np.ones((2, 2), np.uint8)
-	binary_img = cv2.morphologyEx(binary_img, cv2.MORPH_OPEN, kernel, iterations = 2)
+	# kernel = np.ones((2, 2), np.uint8)
+	# binary_img = cv2.morphologyEx(binary_img, cv2.MORPH_OPEN, kernel, iterations = 2)
 
-	kernel = np.ones((3, 3), np.uint8)
-	binary_img = cv2.morphologyEx(binary_img, cv2.MORPH_CLOSE, kernel, iterations = 2)
+	# kernel = np.ones((3, 3), np.uint8)
+	# binary_img = cv2.morphologyEx(binary_img, cv2.MORPH_CLOSE, kernel, iterations = 2)
 
 	return abnormal, binary_img
 
@@ -238,16 +261,13 @@ def accurate_classify(clf, binary_img):
 	for cnt in contours:
 		area = cv2.contourArea(cnt)
 		perimeter = cv2.arcLength(cnt, True)
-		if area > 10 and perimeter > 10:
+		if area > 1 and perimeter > 1:
 			compactness = (perimeter ** 2) / (4 * np.pi * area)
 
 			rect = cv2.minAreaRect(cnt)
 			size =  rect[1]
 			
 			extent = area / (size[0] * size[1])
-
-			M = cv2.moments(cnt)
-			HuM = cv2.HuMoments(M)
 
 			axeX = size[0]
 			axeY = size[1]
@@ -256,7 +276,7 @@ def accurate_classify(clf, binary_img):
 			box = cv2.boxPoints(rect)
 			box = np.int0(box)
 
-			X_test = [compactness, extent, ratio, HuM[0][0], HuM[1][0], HuM[2][0], HuM[3][0]]
+			X_test = [compactness, extent, ratio, area, perimeter]
 			X_test = np.asarray(X_test, dtype=np.float32)
 			X_test = X_test.reshape(1, -1)
 
@@ -327,43 +347,71 @@ def classify_by_scene(clf, scene_name):
 		for row in reader:
 			# reading data
 			filename = "%s_%d" % (scene_name, index)
-			print "Processing", filename
-
 			d = int(row[2])
-			if d == 1 or d == 2 or d == 3 or d == 6:
+			if d == 6:
 				# preparing result folders
-				# directory = 'results/D%d/%s' % (d, filename)
-				# if not os.path.exists(directory):
-				# 	os.makedirs(directory)
+				directory = 'results/D%d/%s' % (d, filename)
+				if not os.path.exists(directory):
+					os.makedirs(directory)
 				
-				for wmode in range(0, 4):
-					dataset = gdal.Open('results/D%d/%s/%d.tif' % (d, filename, wmode), GA_ReadOnly)
-					size_column = dataset.RasterXSize
-					size_row = dataset.RasterYSize
-					band = dataset.GetRasterBand(1)
-					abnormal = band.ReadAsArray(0, 0, size_column, size_row)
-
-					src = 2
-					minus = 5
-					threshold = calc_threshold(abnormal[2: -2, 2: -2], size_column - minus, size_row - minus, mode='otsu')
-					binary_img = binaritify(abnormal, threshold)
-					kernel = np.ones((2, 2), np.uint8)
-					binary_img = cv2.morphologyEx(binary_img, cv2.MORPH_OPEN, kernel, iterations = 2)
+				mode = [(0, 0, np.array([0])),
+						(1, 1, np.array([0])),
+						(2, 2, np.array([0])),
+						(3, 3, np.array([0])),
+						(4, 2, np.array([1,2,3,4])),
+						(5, 2, np.array([0,1,2,3,4])),
+						(6, 2, np.array([0, 4]))]
+				print(filename, end=" ")
+				for alg, wmode, band_idx in mode:
+					binary_img = cv2.imread('results/D%d/%s/%d.png' % (d, filename, alg), -1)
+					
 					kernel = np.ones((3, 3), np.uint8)
 					binary_img = cv2.morphologyEx(binary_img, cv2.MORPH_CLOSE, kernel, iterations = 2)
+
+					# kernel = np.ones((2, 2), np.uint8)
+					# binary_img = cv2.morphologyEx(binary_img, cv2.MORPH_OPEN, kernel, iterations = 2)
 
 					"""
 					Stage 2: accurate detection
 					"""
 					pos, negs = accurate_classify(clf, binary_img)
+					print(0, len(pos) + len(negs), end=" ")
 
 					vis = cv2.imread("data/crop/D%d/%s.png" % (d, filename))
 					vis = draw_candidates(vis, pos, (0, 255, 0))
-					vis = draw_candidates(vis, negs, (0, 0, 255))
-					cv2.imwrite('results/D%d/%s/%d_%d_v.png' % (d, filename, wmode, src), vis)
-					cv2.imwrite('results/D%d/%s/%d_%d_b.png' % (d, filename, wmode, src), binary_img)
-
+					vis = draw_candidates(vis, negs, (0, 255, 0))
+					
+					cv2.imwrite('results/D%d/%s/%d_vis.png' % (d, filename, alg), vis)
+					# cv2.imwrite('results/D%d/%s/%d_%d_b.png' % (d, filename, wmode, src), binary_img)
+				print("")
 			index += 1
+
+def read_image(filename, d):
+	"""
+	Stage 1: reading PAN image
+	"""				
+	panpath = "data/crop/D%d/%s_PAN.tif" % (d, filename)
+	panset = gdal.Open(panpath, GA_ReadOnly)
+	size_column = panset.RasterXSize
+	size_row = panset.RasterYSize
+
+	"""
+	Stage 2: reading MS image
+	"""
+	mspath = "data/crop/D%d/%s_PXS.tif" % (d, filename)
+	msset = gdal.Open(mspath, GA_ReadOnly)
+	size_band = msset.RasterCount + 1
+
+	if msset.RasterXSize != size_column or msset.RasterYSize != size_row:
+		assert("Two dataset have different size")
+
+	# reading data into n-dimension array
+	data = np.zeros((size_band, size_row, size_column), dtype=np.int)
+	data[0, :, :] = panset.GetRasterBand(1).ReadAsArray(0, 0, size_column, size_row).astype(np.int)				
+	for i in range(1, size_band):
+		data[i, :, :] = msset.GetRasterBand(i).ReadAsArray(0, 0, size_column, size_row).astype(np.int)
+
+	return data, size_row, size_column, size_band
 
 def segment_by_scene(scene_name):
 	csv_path = "data/csv/%s.csv" % scene_name
@@ -373,7 +421,7 @@ def segment_by_scene(scene_name):
 		for row in reader:
 			# reading data
 			filename = "%s_%d" % (scene_name, index)
-			print "Processing", filename
+			print("Processing", filename)
 
 			d = int(row[2])
 			if d == 1 or d == 2 or d == 3 or d == 6:
@@ -382,48 +430,24 @@ def segment_by_scene(scene_name):
 				if not os.path.exists(directory):
 					os.makedirs(directory)
 
-				"""
-				Stage 1: reading PAN image
-				"""				
-				panpath = "data/crop/D%d/%s_PAN.tif" % (d, filename)
+				data, size_row, size_column, size_band = read_image(filename, d)
 
-				# reading metadata
-				panset = gdal.Open(panpath, GA_ReadOnly)
-				size_column = panset.RasterXSize
-				size_row = panset.RasterYSize
-
-				"""
-				Stage 2: reading MS image
-				"""
-				mspath = "data/crop/D%d/%s_PXS.tif" % (d, filename)
-				msset = gdal.Open(mspath, GA_ReadOnly)
-				size_band = msset.RasterCount + 1
-
-				if msset.RasterXSize != size_column or msset.RasterYSize != size_row:
-					assert("Two dataset have different size")
-
-				# reading data into n-dimension array
-				data = np.zeros((ms_size_band + 1, size_row, size_column), dtype=np.int)
-				data[0, :, :] = panset.GetRasterBand(1).ReadAsArray(0, 0, size_column, size_row).astype(np.int)				
-				for i in range(1, size_band + 1):
-					data[i, :, :] = msset.GetRasterBand(i).ReadAsArray(0, 0, size_column, size_row).astype(np.int)
-
-				mode = [(0, [0]),
-						(1, [0]),
-						(2, [0]),
-						(3, [0]),
-						(2, [1,2,3,4]),
-						(2, [0,1,2,3,4]),
-						(2, [0, 4])]
-				for wmode, band_idx in mode:
+				mode = [(0, 0, np.array([0])),
+						(1, 1, np.array([0])),
+						(2, 2, np.array([0])),
+						(3, 3, np.array([0])),
+						(4, 2, np.array([1,2,3,4])),
+						(5, 2, np.array([0,1,2,3,4])),
+						(6, 2, np.array([0, 4]))]
+				for alg, wmode, band_idx in mode:
 					"""
 					Stage 1: coarse candidates selection using abnormality threshold
 					"""
 					abnormal, binary_img = calc_binary_img(data, band_idx, size_column, size_row, wmode)
 					
 					# save temp results
-					gdal_array.SaveArray(abnormal, 'results/D%d/%s/%d.tif' % (d, filename, wmode), "GTiff")
-					cv2.imwrite('results/D%d/%s/%d_%d.png' % (d, filename, wmode, src), binary_img)
+					gdal_array.SaveArray(abnormal, 'results/D%d/%s/%d.tif' % (d, filename, alg), "GTiff")
+					cv2.imwrite('results/D%d/%s/%d.png' % (d, filename, alg), binary_img)
 
 			index += 1
 
@@ -436,12 +460,11 @@ if __name__ == '__main__':
 			"VNR20150415", "VNR20150628", "VNR20150902"]
 	
 	filelist = ["VNR20150117", "VNR20150202",
-				"VNR20150303", "VNR20150417",
-				"VNR20150508", "VNR20150609",
+				"VNR20150303", "VNR20150415", 
+				"VNR20150417",
+				"VNR20150609", "VNR20150628", 
 				"VNR20150726", "VNR20150816",
-				"VNR20150904",
-				"VNR20150415", "VNR20150628", "VNR20150902"]
-	
+				"VNR20150902"]
 	"""
 	Stage 1: preparing classifier training dataset
 	"""
@@ -450,7 +473,7 @@ if __name__ == '__main__':
 	
 	# features = np.array(training[0][['compactness',\
 	# 								'extent',
-	# 								'ratio', 'hu1', 'hu2', 'hu3', 'hu4']])
+	# 								'ratio', 'area', 'perimeter']])
 	# X_train = np.asarray(features.tolist(), dtype=np.float32)
 
 	# param_grid = {'C': [1e3, 5e3, 1e4, 5e4, 1e5], 'gamma': [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.1], }
@@ -463,4 +486,6 @@ if __name__ == '__main__':
 	for scene_name in filelist:
 		# crop_by_shp(scene_name)
 		# crop_by_xy(scene_name)
+		# copy(scene_name)
 		segment_by_scene(scene_name)
+		# classify_by_scene(clf, scene_name)
